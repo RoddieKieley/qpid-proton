@@ -35,13 +35,14 @@ find_package(NodePackages)
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_VERSION 1)
 set(CMAKE_CROSSCOMPILING TRUE)
+set(CMAKE_VERBOSE_MAKEFILE on)
 
 # Specify the compiler to use for cross-compilation.
 set(CMAKE_C_COMPILER "${EMCC}")
 
 # Don't do compiler autodetection, since we are cross-compiling.
 include(CMakeForceCompiler)
-CMAKE_FORCE_C_COMPILER("${CMAKE_C_COMPILER}" Clang)
+#CMAKE_FORCE_C_COMPILER("${CMAKE_C_COMPILER}" Clang)
 
 # The Proton default build type is RelWithDebInfo, but for JavaScript the C debug
 # mechanism is irrelevant. If Debug is explicitly set we turn off optimisations
@@ -74,8 +75,8 @@ set(PN_PATH ${CMAKE_SOURCE_DIR}/proton-c)
 set(pn_ssl_impl ${PN_PATH}/src/ssl/ssl_stub.c)
 
 # emscripten is Linux like so use the posix impls.
-set(pn_io_impl ${PN_PATH}/src/posix/io.c)
-set(pn_selector_impl ${PN_PATH}/src/posix/selector.c)
+set(pn_io_impl ${PN_PATH}/src/reactor/io/posix/io.c)
+set(pn_selector_impl ${PN_PATH}/src/reactor/io/posix/selector.c)
 
 CHECK_LIBRARY_EXISTS (uuid uuid_generate "" UUID_GENERATE_IN_UUID)
 if (UUID_GENERATE_IN_UUID)
@@ -104,7 +105,8 @@ set(COMPILE_WARNING_FLAGS "-Werror -Wall -pedantic-errors -Wno-comment -Wno-warn
 # Explicitly set PLATFORM_DEFINITIONS to Linux ones for emscripten as we don't
 # want to inadvertently use Windows versions if we happen to be cross-compiling
 # from a Windows platform
-set(PLATFORM_DEFINITIONS "USE_CLOCK_GETTIME;USE_UUID_GENERATE;USE_STRERROR_R;USE_ATOLL")
+#set(PLATFORM_DEFINITIONS "USE_CLOCK_GETTIME;USE_UUID_GENERATE;USE_STRERROR_R;USE_ATOLL")
+set(PLATFORM_DEFINITIONS "USE_UUID_GENERATE;USE_STRERROR_R;USE_ATOLL")
 
 # The following is largely a copy from the the main proton-c/CMakeLists.txt.
 # The main difference is prefixing paths with ${PN_PATH}/ as we can't use a
@@ -113,50 +115,43 @@ set(PLATFORM_DEFINITIONS "USE_CLOCK_GETTIME;USE_UUID_GENERATE;USE_STRERROR_R;USE
 set(qpid-proton-platform
   ${pn_io_impl}
   ${pn_selector_impl}
-  ${PN_PATH}/src/platform.c
+  ${PN_PATH}/src/platform/platform.c
   ${pn_ssl_impl}
   )
 
 set(qpid-proton-core
-  ${PN_PATH}/src/object/object.c
-  ${PN_PATH}/src/object/list.c
-  ${PN_PATH}/src/object/map.c
-  ${PN_PATH}/src/object/string.c
-  ${PN_PATH}/src/object/iterator.c
-  ${PN_PATH}/src/object/record.c
+  ${PN_PATH}/src/core/object/object.c
+  ${PN_PATH}/src/core/object/list.c
+  ${PN_PATH}/src/core/object/map.c
+  ${PN_PATH}/src/core/object/string.c
+  ${PN_PATH}/src/core/object/iterator.c
+  ${PN_PATH}/src/core/object/record.c
 
-  ${PN_PATH}/src/log.c
-  ${PN_PATH}/src/util.c
-  ${PN_PATH}/src/url.c
-  ${PN_PATH}/src/error.c
-  ${PN_PATH}/src/buffer.c
-  ${PN_PATH}/src/parser.c
-  ${PN_PATH}/src/scanner.c
-  ${PN_PATH}/src/types.c
+  ${PN_PATH}/src/core/log.c
+  ${PN_PATH}/src/core/util.c
+  ${PN_PATH}/src/core/error.c
+  ${PN_PATH}/src/core/buffer.c
+  ${PN_PATH}/src/core/types.c
 
-  ${PN_PATH}/src/framing/framing.c
+  ${PN_PATH}/src/core/framing.c
 
-  ${PN_PATH}/src/codec/codec.c
-  ${PN_PATH}/src/codec/decoder.c
-  ${PN_PATH}/src/codec/encoder.c
+  ${PN_PATH}/src/core/codec.c
+  ${PN_PATH}/src/core/decoder.c
+  ${PN_PATH}/src/core/encoder.c
 
-  ${PN_PATH}/src/dispatcher/dispatcher.c
-  ${PN_PATH}/src/engine/engine.c
-  ${PN_PATH}/src/events/event.c
-  ${PN_PATH}/src/transport/autodetect.c
-  ${PN_PATH}/src/transport/transport.c
-  ${PN_PATH}/src/message/message.c
-  ${PN_PATH}/src/sasl/sasl.c
-  ${PN_PATH}/src/sasl/none_sasl.c
+  ${PN_PATH}/src/core/dispatcher.c
+  ${PN_PATH}/src/core/connection_driver.c
+  ${PN_PATH}/src/core/engine.c
+  ${PN_PATH}/src/core/event.c
+  ${PN_PATH}/src/core/autodetect.c
+  ${PN_PATH}/src/core/transport.c
+  ${PN_PATH}/src/core/message.c
+  )
 
-  ${PN_PATH}/src/messenger/messenger.c
-  ${PN_PATH}/src/messenger/subscription.c
-  ${PN_PATH}/src/messenger/store.c
-  ${PN_PATH}/src/messenger/transform.c
-  ${PN_PATH}/src/selectable.c
-
-  ${CMAKE_CURRENT_BINARY_DIR}/encodings.h
-  ${CMAKE_CURRENT_BINARY_DIR}/protocol.h
+set (qpid-proton-include-generated
+  ${CMAKE_CURRENT_BINARY_DIR}/src/encodings.h
+  ${CMAKE_CURRENT_BINARY_DIR}/src/protocol.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/proton/version.h
   )
 
 set_source_files_properties(
