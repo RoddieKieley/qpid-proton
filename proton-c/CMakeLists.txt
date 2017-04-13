@@ -19,6 +19,7 @@
 
 include(CheckLibraryExists)
 include(CheckSymbolExists)
+include(CheckClockGetTime)
 
 include(soversion.cmake)
 
@@ -134,25 +135,6 @@ elseif (SSL_IMPL STREQUAL schannel)
 else ()
   set (pn_ssl_impl src/ssl/ssl_stub.c)
 endif ()
-
-# First check whether we get clock_gettime without any special library linked
-CHECK_SYMBOL_EXISTS(clock_gettime "time.h" CLOCK_GETTIME_IN_LIBC)
-if (CLOCK_GETTIME_IN_LIBC)
-  list(APPEND PLATFORM_DEFINITIONS "USE_CLOCK_GETTIME")
-else (CLOCK_GETTIME_IN_LIBC)
-  CHECK_LIBRARY_EXISTS (rt clock_gettime "" CLOCK_GETTIME_IN_RT)
-  if (CLOCK_GETTIME_IN_RT)
-    set (TIME_LIB rt)
-    list(APPEND PLATFORM_DEFINITIONS "USE_CLOCK_GETTIME")
-  else (CLOCK_GETTIME_IN_RT)
-    CHECK_SYMBOL_EXISTS(GetSystemTimeAsFileTime "windows.h" WINDOWS_FILETIME)
-    if (WINDOWS_FILETIME)
-      list(APPEND PLATFORM_DEFINITIONS "USE_WIN_FILETIME")
-    else (WINDOWS_FILETIME)
-      list(APPEND PLATFORM_DEFINITIONS "USE_GETTIMEOFDAY")
-    endif (WINDOWS_FILETIME)
-  endif (CLOCK_GETTIME_IN_RT)
-endif (CLOCK_GETTIME_IN_LIBC)
 
 if (PN_WINAPI)
   CHECK_SYMBOL_EXISTS(strerror_s "string.h" STRERROR_S_IN_WINAPI)
