@@ -70,7 +70,8 @@ const pn_io_layer_t ssl_layer = {
     pn_ssl_input,
     pn_ssl_output,
     NULL,
-    NULL
+    NULL,
+	0
 };
 
 bool pn_ssl_get_cipher_name(pn_ssl_t *ssl, char *buffer, size_t size)

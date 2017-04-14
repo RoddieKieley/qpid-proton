@@ -32,7 +32,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/tools/cmake/Modu
 
 if (MSVC)
   # No C99 capability, use C++
-  set(DEFAULT_BUILD_WITH_CXX ON)
+##  set(DEFAULT_BUILD_WITH_CXX ON)
+  set(DEFAULT_BUILD_WITH_CXX OFF)
 endif (MSVC)
 option(BUILD_WITH_CXX "Compile Proton using C++" ${DEFAULT_BUILD_WITH_CXX})
 
@@ -43,7 +44,8 @@ else (CMAKE_CONFIGURATION_TYPES)
   # There is a single build configuration
   # If the build type is not set then set the default
   if (NOT CMAKE_BUILD_TYPE)
-  set (CMAKE_BUILD_TYPE RelWithDebInfo CACHE string
+##  set (CMAKE_BUILD_TYPE RelWithDebInfo CACHE string
+  set (CMAKE_BUILD_TYPE Debug CACHE string
        "Build type: Debug, Release, RelWithDebInfo, MinSizeRel or Coverage (default RelWithDebInfo)" FORCE)
   endif ()
 
@@ -159,7 +161,8 @@ set (PROTON_SHARE ${SHARE_INSTALL_DIR}/proton-${PN_VERSION})
 find_program(VALGRIND_EXE valgrind DOC "Location of the valgrind program")
 mark_as_advanced (VALGRIND_EXE)
 
-option(ENABLE_VALGRIND "Use valgrind to detect run-time problems" ON)
+##option(ENABLE_VALGRIND "Use valgrind to detect run-time problems" ON)
+option(ENABLE_VALGRIND "Use valgrind to detect run-time problems" OFF)
 if (ENABLE_VALGRIND)
   if (NOT VALGRIND_EXE)
     message(STATUS "Can't locate the valgrind command; no run-time error detection")
@@ -171,7 +174,7 @@ if (ENABLE_VALGRIND)
 endif (ENABLE_VALGRIND)
 
 add_subdirectory(proton-c)
-add_subdirectory(examples)
+##add_subdirectory(examples)
 
 install (FILES LICENSE README.md
          DESTINATION ${PROTON_SHARE})

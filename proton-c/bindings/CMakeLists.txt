@@ -33,7 +33,8 @@ endif (EMSCRIPTEN_FOUND)
 
 # Prerequisites for C++
 if (CMAKE_CXX_COMPILER)
-  set (DEFAULT_CPP ON)
+##  set (DEFAULT_CPP ON)
+  set (DEFAULT_CPP OFF)
 endif (CMAKE_CXX_COMPILER)
 
 # Prerequisites for Go
@@ -44,7 +45,8 @@ if (GO_EXE)
     # Go on windows requires gcc tool chain
     set (DEFAULT_GO OFF)
   else()
-    set (DEFAULT_GO ON)
+##    set (DEFAULT_GO ON)
+    set (DEFAULT_GO OFF)
   endif()
 endif (GO_EXE)
 
@@ -72,7 +74,8 @@ if(SWIG_FOUND)
   # Prerequisites for Python wrapper:
   find_package (PythonLibs ${PYTHON_VERSION_STRING} EXACT)
   if (PYTHONLIBS_FOUND)
-    set (DEFAULT_PYTHON ON)
+##    set (DEFAULT_PYTHON ON)
+    set (DEFAULT_PYTHON OFF)
   endif (PYTHONLIBS_FOUND)
 
   # Prerequisites for Ruby:
@@ -95,7 +98,8 @@ if(SWIG_FOUND)
 
   find_package(Ruby)
   if (RUBY_FOUND)
-    set (DEFAULT_RUBY ON)
+##    set (DEFAULT_RUBY ON)
+    set (DEFAULT_RUBY OFF)
 
     CheckRubyGem("HAS_RUBY_GEM_RSPEC"     "rspec")
     CheckRubyGem("HAS_RUBY_GEM_SIMPLECOV" "simplecov")
@@ -117,7 +121,8 @@ if(SWIG_FOUND)
     find_program(PHP_EXE php)
     mark_as_advanced (PHP_EXE)
     if (PHP_EXE)
-      set (DEFAULT_PHP ON)
+##      set (DEFAULT_PHP ON)
+      set (DEFAULT_PHP OFF)
     endif (PHP_EXE)
   endif (PHP_CONFIG_EXE)
   mark_as_advanced (PHP_CONFIG_EXE)
@@ -125,7 +130,8 @@ if(SWIG_FOUND)
   # Prerequisites for Perl:
   include(ProtonFindPerl)
   if (PERLLIBS_FOUND)
-    set (DEFAULT_PERL ON)
+##    set (DEFAULT_PERL ON)
+    set (DEFAULT_PERL OFF)
   endif (PERLLIBS_FOUND)
 
 endif()

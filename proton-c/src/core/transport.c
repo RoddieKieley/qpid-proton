@@ -941,7 +941,7 @@ int pn_post_frame(pn_transport_t *transport, uint8_t type, uint16_t ch, const ch
     return PN_ERR;
   }
 
-  pn_frame_t frame = {0,};
+  pn_frame_t frame = {0, 0, 0, NULL, 0, NULL};
   frame.type = type;
   frame.channel = ch;
   frame.payload = buf.start;
@@ -1042,7 +1042,7 @@ static int pni_post_amqp_transfer_frame(pn_transport_t *transport, uint16_t ch,
     payload->size -= available;
     buf.size += available;
 
-    pn_frame_t frame = {AMQP_FRAME_TYPE};
+    pn_frame_t frame = {AMQP_FRAME_TYPE, 0, 0, NULL, 0, NULL};
     frame.channel = ch;
     frame.payload = buf.start;
     frame.size = buf.size;

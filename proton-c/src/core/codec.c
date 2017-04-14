@@ -1917,7 +1917,7 @@ pn_bytes_t pn_data_get_binary(pn_data_t *data)
   if (node && node->atom.type == PN_BINARY) {
     return node->atom.u.as_bytes;
   } else {
-    pn_bytes_t t = {0};
+    pn_bytes_t t = { 0, NULL };
     return t;
   }
 }
@@ -1928,7 +1928,7 @@ pn_bytes_t pn_data_get_string(pn_data_t *data)
   if (node && node->atom.type == PN_STRING) {
     return node->atom.u.as_bytes;
   } else {
-    pn_bytes_t t = {0};
+    pn_bytes_t t = { 0, NULL };
     return t;
   }
 }
@@ -1939,7 +1939,7 @@ pn_bytes_t pn_data_get_symbol(pn_data_t *data)
   if (node && node->atom.type == PN_SYMBOL) {
     return node->atom.u.as_bytes;
   } else {
-    pn_bytes_t t = {0};
+    pn_bytes_t t = { 0, NULL };
     return t;
   }
 }
@@ -1952,7 +1952,7 @@ pn_bytes_t pn_data_get_bytes(pn_data_t *data)
                node->atom.type == PN_SYMBOL)) {
     return node->atom.u.as_bytes;
   } else {
-    pn_bytes_t t = {0};
+    pn_bytes_t t = { 0, NULL };
     return t;
   }
 }
