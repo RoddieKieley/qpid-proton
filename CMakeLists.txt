@@ -17,6 +17,10 @@
 # under the License.
 #
 cmake_minimum_required (VERSION 2.8.7)
+##SET(CMAKE_C_OUTPUT_EXTENSION ".bc")
+##SET(CMAKE_CXX_OUTPUT_EXTENSION ".bc")
+SET(CMAKE_EXECUTABLE_SUFFIX .js)
+SET(CMAKE_EXECUTABLE_SUFFIX_C .js)
 
 project (Proton C)
 
