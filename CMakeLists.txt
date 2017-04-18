@@ -178,7 +178,7 @@ if (ENABLE_VALGRIND)
 endif (ENABLE_VALGRIND)
 
 add_subdirectory(proton-c)
-##add_subdirectory(examples)
+add_subdirectory(examples)
 
 install (FILES LICENSE README.md
          DESTINATION ${PROTON_SHARE})
