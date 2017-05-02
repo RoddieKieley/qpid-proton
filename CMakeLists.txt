@@ -19,9 +19,10 @@
 cmake_minimum_required (VERSION 2.8.7)
 ##SET(CMAKE_C_OUTPUT_EXTENSION ".bc")
 ##SET(CMAKE_CXX_OUTPUT_EXTENSION ".bc")
+##if (BUILD_JAVASCRIPT)
 SET(CMAKE_EXECUTABLE_SUFFIX .js)
 SET(CMAKE_EXECUTABLE_SUFFIX_C .js)
-
+##endif(BUILD_JAVASCRIPT)
 project (Proton C)
 
 # Enable C++ now for examples and bindings subdirectories, but make it optional.
@@ -36,8 +37,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/tools/cmake/Modu
 
 if (MSVC)
   # No C99 capability, use C++
-##  set(DEFAULT_BUILD_WITH_CXX ON)
-  set(DEFAULT_BUILD_WITH_CXX OFF)
+  set(DEFAULT_BUILD_WITH_CXX ON)
 endif (MSVC)
 option(BUILD_WITH_CXX "Compile Proton using C++" ${DEFAULT_BUILD_WITH_CXX})
 
@@ -165,8 +165,7 @@ set (PROTON_SHARE ${SHARE_INSTALL_DIR}/proton-${PN_VERSION})
 find_program(VALGRIND_EXE valgrind DOC "Location of the valgrind program")
 mark_as_advanced (VALGRIND_EXE)
 
-##option(ENABLE_VALGRIND "Use valgrind to detect run-time problems" ON)
-option(ENABLE_VALGRIND "Use valgrind to detect run-time problems" OFF)
+option(ENABLE_VALGRIND "Use valgrind to detect run-time problems" ON)
 if (ENABLE_VALGRIND)
   if (NOT VALGRIND_EXE)
     message(STATUS "Can't locate the valgrind command; no run-time error detection")

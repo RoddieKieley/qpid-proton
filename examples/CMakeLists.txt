@@ -34,7 +34,7 @@ set_search_path(EXAMPLE_PYTHONPATH "${CMAKE_CURRENT_SOURCE_DIR}" "$ENV{PYTHON_PA
 set(EXAMPLE_ENV "PYTHONPATH=${EXAMPLE_PYTHONPATH}")
 
 add_subdirectory(c)
-##add_subdirectory(go)
+add_subdirectory(go)
 if (BUILD_CPP)
-##  add_subdirectory(cpp)
+  add_subdirectory(cpp)
 endif()
