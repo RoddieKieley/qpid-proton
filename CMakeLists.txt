@@ -17,12 +17,7 @@
 # under the License.
 #
 cmake_minimum_required (VERSION 2.8.7)
-##SET(CMAKE_C_OUTPUT_EXTENSION ".bc")
-##SET(CMAKE_CXX_OUTPUT_EXTENSION ".bc")
-##if (BUILD_JAVASCRIPT)
-SET(CMAKE_EXECUTABLE_SUFFIX .js)
-SET(CMAKE_EXECUTABLE_SUFFIX_C .js)
-##endif(BUILD_JAVASCRIPT)
+
 project (Proton C)
 
 # Enable C++ now for examples and bindings subdirectories, but make it optional.
@@ -79,6 +74,9 @@ if (CMAKE_BUILD_TYPE MATCHES "Coverage")
     WORKING_DIRECTORY ./coverage_results
     CgOMMAND ${CMAKE_SOURCE_DIR}/bin/record-coverage.sh ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
 endif()
+
+
+
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   # Default to universal binary on Mac OS X unless user has overriden
@@ -139,6 +137,8 @@ set (MAN_INSTALL_DIR share/man CACHE PATH "Manpage directory")
 
 mark_as_advanced (INCLUDE_INSTALL_DIR LIB_INSTALL_DIR SYSCONF_INSTALL_DIR SHARE_INSTALL_DIR MAN_INSTALL_DIR)
 
+
+
 ## LANGUAGE BINDINGS
 
 # Default directory for language bindings not being installed into
@@ -176,6 +176,10 @@ if (ENABLE_VALGRIND)
   endif ()
 endif (ENABLE_VALGRIND)
 
+##SET(CMAKE_EXECUTABLE_SUFFIX .js)
+##SET(CMAKE_EXECUTABLE_SUFFIX_C .js)
+##SET(CMAKE_EXECUTABLE_SUFFIX_CXX .js)
+
 add_subdirectory(proton-c)
 add_subdirectory(examples)
 
@@ -192,3 +196,4 @@ configure_file(${CMAKE_SOURCE_DIR}/config.sh.in
                ${CMAKE_BINARY_DIR}/config.sh @ONLY)
 configure_file(${CMAKE_SOURCE_DIR}/config.bat.in
                ${CMAKE_BINARY_DIR}/config.bat @ONLY)
+               

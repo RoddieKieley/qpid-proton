@@ -211,6 +211,7 @@ option(ENABLE_UNDEFINED_ERROR "Check for unresolved library symbols" ${DEFAULT_U
 option(ENABLE_LINKTIME_OPTIMIZATION "Perform link time optimization" ${DEFAULT_LINKTIME_OPTIMIZATION})
 option(ENABLE_HIDE_UNEXPORTED_SYMBOLS "Only export library symbols that are explicitly requested" ${DEFAULT_HIDE_UNEXPORTED_SYMBOLS})
 
+
 # Set any additional compiler specific flags
 if (CMAKE_COMPILER_IS_GNUCC)
   if (ENABLE_WARNING_ERROR)
@@ -301,6 +302,7 @@ pn_absolute_install_dir(INCLUDEDIR ${INCLUDE_INSTALL_DIR} ${CMAKE_INSTALL_PREFIX
 
 add_subdirectory(docs/api)
 add_subdirectory(../tests/tools/apps/c ../tests/tools/apps/c)
+
 
 # for full source distribution:
 set (qpid-proton-platform-all
@@ -629,6 +631,8 @@ install (FILES ${headers} DESTINATION ${INCLUDE_INSTALL_DIR}/proton)
 install (FILES  ${CMAKE_CURRENT_BINARY_DIR}/include/proton/version.h
          DESTINATION ${INCLUDE_INSTALL_DIR}/proton)
 
+
+
 # Set ${VAR}/${VAR}DEBUG variables, configure and install the packageconf files for LIB
 macro(configure_lib VAR LIB)
   if(DEFINED CMAKE_IMPORT_LIBRARY_PREFIX)
@@ -802,8 +806,8 @@ endif()
 mark_as_advanced (RUBY_EXE RSPEC_EXE)
 
 if (BUILD_JAVASCRIPT)
-  SET(FIPS_EMSCRIPTEN_USE_FS ON)
-  include (${CMAKE_SOURCE_DIR}/tools/cmake/toolchains/emscripten.toolchain.cmake)
+  ##SET(FIPS_EMSCRIPTEN_USE_FS ON)
+##  include (${CMAKE_SOURCE_DIR}/tools/cmake/toolchains/emscripten.toolchain.cmake)
   add_test (javascript-codec ${env_py} node ${pn_test_root}/javascript/codec.js)
   add_test (javascript-message ${env_py} node ${pn_test_root}/javascript/message.js)
 ##SET(CMAKE_EXECUTABLE_SUFFIX ".bc")

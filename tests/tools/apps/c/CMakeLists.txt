@@ -31,6 +31,7 @@ else (INTTYPES_AVAILABLE)
   endif (CMAKE_COMPILER_IS_GNUCC)
 endif (INTTYPES_AVAILABLE)
 
+
 add_executable(msgr-recv msgr-recv.c msgr-common.c)
 add_executable(msgr-send msgr-send.c msgr-common.c)
 add_executable(reactor-recv reactor-recv.c msgr-common.c)
@@ -51,3 +52,9 @@ set_target_properties (
 if (BUILD_WITH_CXX)
   set_source_files_properties (msgr-recv.c msgr-send.c msgr-common.c reactor-recv.c reactor-send.c PROPERTIES LANGUAGE CXX)
 endif (BUILD_WITH_CXX)
+
+##SET(CMAKE_EXECUTABLE_SUFFIX .js)
+##SET(CMAKE_EXECUTABLE_SUFFIX_C .js)
+##SET(CMAKE_EXECUTABLE_SUFFIX_CXX .js)
+
+

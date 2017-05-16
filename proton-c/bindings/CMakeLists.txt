@@ -45,8 +45,8 @@ if (GO_EXE)
     # Go on windows requires gcc tool chain
     set (DEFAULT_GO OFF)
   else()
-##    set (DEFAULT_GO ON)
-    set (DEFAULT_GO OFF)
+    set (DEFAULT_GO ON)
+##    set (DEFAULT_GO OFF)
   endif()
 endif (GO_EXE)
 
