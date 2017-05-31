@@ -70,7 +70,7 @@ set(SASL_IMPL ${sasl_impl} CACHE STRING "Library to use for SASL support. Valid 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/include/proton/version.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/include/proton/version.h"
-  )
+ )
 
 include_directories ("${CMAKE_CURRENT_BINARY_DIR}/src")
 include_directories ("${CMAKE_CURRENT_BINARY_DIR}/include")
@@ -95,6 +95,11 @@ add_custom_target(
   generated_c_files
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/protocol.h ${CMAKE_CURRENT_BINARY_DIR}/src/encodings.h
   )
+
+add_custom_target(
+	emcc_build 
+    #${env_py} -- "PATH=${py_path}" "PYTHONPATH=${perf_pythonpath}" ${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/bin/setup.py" "emscripten")
+    ${env_py} "PYTHONPATH=${perf_pythonpath}" ${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/bin/setup.py" "emscripten")
 
 # Select IO impl
 if(PN_WINAPI)
@@ -555,7 +560,7 @@ add_library (
   ${qpid-proton-include}
   ${qpid-proton-include-generated}
   )
-add_dependencies(qpid-proton-core generated_c_files)
+add_dependencies(qpid-proton-core generated_c_files emcc_build)
 
 target_link_libraries (qpid-proton-core ${UUID_LIB} ${SSL_LIB} ${SASL_LIB} ${TIME_LIB} ${PLATFORM_LIBS})
 
@@ -582,7 +587,7 @@ add_library(
   ${qpid-proton-platform-io}
   ${qpid-proton-include-extra}
   )
-add_dependencies(qpid-proton generated_c_files)
+add_dependencies(qpid-proton generated_c_files emcc_build)
 
 if (MSVC)
   # Add a phony dependency for Windows builds to serialize creation
@@ -805,7 +810,6 @@ if (RUBY_EXE AND BUILD_RUBY)
                 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bindings/ruby
                 COMMAND ${env_py} "PATH=${rb_path}" "RUBYLIB=${rb_rubylib}"
                         ${RSPEC_EXE})
-
     else(RSPEC_EXE)
       message (STATUS "Cannot find rspec, skipping rspec tests")
     endif(RSPEC_EXE)
@@ -819,6 +823,24 @@ endif()
 mark_as_advanced (RUBY_EXE RSPEC_EXE)
 
 if (BUILD_JAVASCRIPT)
+  message(AUTHOR_WARNING "in proton-c BUILD_JAVASCRIPT")
+  #add_custom_command (
+    #OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/src/protocol.h
+    #COMMAND ${env_py} PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/src/protocol.h.py > ${CMAKE_CURRENT_BINARY_DIR}/src/protocol.h
+    #COMMAND ${env_py} PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../bin/setup.py
+    #DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../bin/setup.py
+  #)
+    #execute_process(${env_py} PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../bin/setup.py)
+    #execute_process(COMMAND ${env_py} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../bin/setup.py)
+##add_custom_target(emscriptenbuild
+                  ##COMMAND ${env_py} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../bin/setup.py)
+  ##add_custom_target(quick_perf_c ${env_py} -- "PATH=${py_path}" "PYTHONPATH=${perf_pythonpath}"
+                           ##${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/tests/perf/quick_perf.py" "C")
+
+  ##add_custom_target(emcc_build ${env_py} -- "PATH=${py_path}" "PYTHONPATH=${perf_pythonpath}"
+                           ##${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/bin/setup.py" "emscripten")
+
   add_test (javascript-codec ${env_py} node ${pn_test_root}/javascript/codec.js)
   add_test (javascript-message ${env_py} node ${pn_test_root}/javascript/message.js)
 endif (BUILD_JAVASCRIPT)
+
