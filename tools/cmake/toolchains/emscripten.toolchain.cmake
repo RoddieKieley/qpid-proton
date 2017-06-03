@@ -29,7 +29,8 @@ macro(find_emscripten_sdk)
     # the location of the .emscripten config file
     get_filename_component(EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../${EMSC_EMSDK_DIRNAME}" ABSOLUTE)
     if (NOT EXISTS "${EMSCRIPTEN_ROOT_PATH}/emcc")
-        message(FATAL_ERROR "Could not find emscripten SDK! Please run 'fips setup emscripten'!")
+        message(FATAL_ERROR "Could not find emscripten SDK! Please run 'fips setup emscripten'! Looked in " ${EMSCRIPTEN_ROOT_PATH} "/emcc")
+        #message(FATAL_ERROR "Could not find emscripten SDK! Please run 'fips setup emscripten'! Looked in " ${CMAKE_CURRENT_LIST_DIR} "/../" ${EMSC_EMSDK_DIRNAME})
     endif()
 endmacro()
 
