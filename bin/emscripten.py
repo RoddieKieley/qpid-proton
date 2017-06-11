@@ -36,7 +36,7 @@ def get_sdk_url() :
 #-------------------------------------------------------------------------------
 def get_sdk_dir(fips_dir) :
     """return the platform-specific SDK dir"""
-    return util.get_workspace_dir(fips_dir) + '/fips-sdks/' + util.get_host_platform()
+    return util.get_workspace_dir(fips_dir) + '/sdks/' + util.get_host_platform()
 
 #-------------------------------------------------------------------------------
 def get_sdk_version() :
@@ -116,7 +116,8 @@ def finish(sdk_dir) :
         #subprocess.call(args=sdk_dir_emsdk_activate)
         #subprocess.call(args='./emsdk activate --embedded latest')
         #format(get_sdk_version()), cwd=sdk_dir, shell=True)
-        subprocess.call(args='emsdk activate --embedded {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
+        #subprocess.call(args='emsdk activate --embedded {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
+        subprocess.call(args='emsdk activate --embedded', cwd=sdk_dir, shell=True)
         log.colored(log.YELLOW, '=== setup emscripten SDK: finish')
 
 #-------------------------------------------------------------------------------

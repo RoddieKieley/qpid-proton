@@ -13,15 +13,17 @@
 #   use the --em-config like the C/CXX compilers.
 #
 
+message(STATUS "In emscripten.toolchain.cmake")
 # define emscripten SDK version
 set(FIPS_EMSCRIPTEN_SDK_VERSION "incoming")
 if (${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
-    set(EMSC_EMSDK_DIRNAME "../fips-sdks/win/emsdk_portable/emscripten/${FIPS_EMSCRIPTEN_SDK_VERSION}")
+    set(EMSC_EMSDK_DIRNAME "../sdks/win/emsdk-portable/emscripten/${FIPS_EMSCRIPTEN_SDK_VERSION}")
 elseif (${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Darwin")
-    set(EMSC_EMSDK_DIRNAME "../fips-sdks/osx/emsdk_portable/emscripten/${FIPS_EMSCRIPTEN_SDK_VERSION}")
+    set(EMSC_EMSDK_DIRNAME "../sdks/osx/emsdk-portable/emscripten/${FIPS_EMSCRIPTEN_SDK_VERSION}")
 elseif (${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Linux")
-    set(EMSC_EMSDK_DIRNAME "../fips-sdks/linux/emsdk_portable/emscripten/${FIPS_EMSCRIPTEN_SDK_VERSION}")
+    set(EMSC_EMSDK_DIRNAME "../sdks/linux/emsdk-portable/emscripten/${FIPS_EMSCRIPTEN_SDK_VERSION}")
 endif()
+message(STATUS "Set FIPS_EMSCRIPTEN_SDK_VERSION " ${FIPS_EMSCRIPTEN_SDK_VERSION})
 
 # find the emscripten SDK and set the "EMSC_HAS_LOCAL_CONFIG" variable
 macro(find_emscripten_sdk)
@@ -29,14 +31,17 @@ macro(find_emscripten_sdk)
     # the location of the .emscripten config file
     get_filename_component(EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../${EMSC_EMSDK_DIRNAME}" ABSOLUTE)
     if (NOT EXISTS "${EMSCRIPTEN_ROOT_PATH}/emcc")
-        message(FATAL_ERROR "Could not find emscripten SDK! Please run 'fips setup emscripten'! Looked in " ${EMSCRIPTEN_ROOT_PATH} "/emcc")
-        #message(FATAL_ERROR "Could not find emscripten SDK! Please run 'fips setup emscripten'! Looked in " ${CMAKE_CURRENT_LIST_DIR} "/../" ${EMSC_EMSDK_DIRNAME})
+        message(FATAL_ERROR "Could not find emscripten SDK! Please run 'bin/python setup.py emscripten'! Looked in " ${EMSCRIPTEN_ROOT_PATH} "/emcc")
     endif()
+    message(STATUS "Found emscripten SDK in " ${EMSCRIPTEN_ROOT_PATH} "/emcc")
 endmacro()
+message(STATUS "Set EMSCRIPTEN_ROOT_PATH " ${EMSCRIPTEN_ROOT_PATH})
 
 # find the emscripten SDK
 find_emscripten_sdk()
-set(EMSCRIPTEN_LLVM_ROOT "${EMSCRIPTEN_ROOT_PATH}/../../clang/fastcomp/build_${FIPS_EMSCRIPTEN_SDK_VERSION}_64/bin")
+#set(EMSCRIPTEN_LLVM_ROOT "${EMSCRIPTEN_ROOT_PATH}/../../clang/fastcomp/build_${FIPS_EMSCRIPTEN_SDK_VERSION}_64/bin")
+set(EMSCRIPTEN_LLVM_ROOT "${EMSCRIPTEN_ROOT_PATH}/../../clang/" ${FIPS_EMSCRIPTEN_SDK_VERSION})
+message(STATUS "Set EMSCRIPTEN_LLVM_ROOT " ${EMSCRIPTEN_LLVM_ROOT})
 
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
 get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
@@ -141,7 +146,7 @@ set(CMAKE_CROSSCOMPILING TRUE)
 set(CMAKE_SYSTEM_PROCESSOR x86)
 
 # Find the .emscripten file and cache, this is either setup locally in the
-# emscripten SDK (this is the preferred way and used by 'fips setup emscripten',
+# emscripten SDK (this is the preferred way and used by 'python bin/setup.py emscripten',
 # but it's a brand new feature: https://github.com/juj/emsdk/issues/24)
 # If an SDK-local .emscripten is not found, fall back to ~/.emscripten
 get_filename_component(EMSCRIPTEN_DOT_FILE "${EMSCRIPTEN_ROOT_PATH}/../../.emscripten" ABSOLUTE)
