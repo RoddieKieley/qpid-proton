@@ -31,41 +31,49 @@ sdk_version = {
 #-------------------------------------------------------------------------------
 def get_sdk_url() :
     """lookup SDK url for this host platform"""
+    log.info("get_sdk_url() lookup SDK url for this host platform")
     return urls[util.get_host_platform()]
 
 #-------------------------------------------------------------------------------
 def get_sdk_dir(fips_dir) :
     """return the platform-specific SDK dir"""
+    log.info("get_sdk_dir() return the platform-specific SDK dir")
     return util.get_workspace_dir(fips_dir) + '/sdks/' + util.get_host_platform()
 
 #-------------------------------------------------------------------------------
 def get_sdk_version() :
+    log.info("get_sdk_version()")
     return sdk_version[util.get_host_platform()]
 
 #-------------------------------------------------------------------------------
 def get_emsdk_dir(fips_dir) :
     """return the emscripten SDK path (emsdk-portable)"""
+    log.info("get_emsdk_dir() return the emscripten SDK path (emsdk-portable)")
     return get_sdk_dir(fips_dir) + '/emsdk-portable'
 
 #-------------------------------------------------------------------------------
 def get_archive_name() :
     """return name of sdk archive"""
+    log.info("get_archive_name() return name of sdk archive")
     return archives[util.get_host_platform()]
 
 #-------------------------------------------------------------------------------
 def get_archive_path(fips_dir) :
     """return path to sdk archive"""
+    log.info("get_archive_path() return path to sdk archive")
     return get_sdk_dir(fips_dir) + '/' + get_archive_name() 
 
 #-------------------------------------------------------------------------------
 def ensure_sdk_dirs(fips_dir) :
     """make sure the sdk dir exists"""
+    log.info("ensure_sdk_dirs() make sure the sdk dir exists")
     emsdk_dir = get_emsdk_dir(fips_dir)
     if not os.path.isdir(emsdk_dir) :
         os.makedirs(emsdk_dir)
 
 #-------------------------------------------------------------------------------
 def uncompress(src_path, dst_path, zip_dir_name) :
+    log.info("uncompress src_path " + src_path + " dst_path " + dst_path + " zip_dir_name " + zip_dir_name)
     if '.zip' in src_path :
         with zipfile.ZipFile(src_path, 'r') as archive:
             archive.extractall(dst_path + '/' + zip_dir_name)
@@ -80,6 +88,7 @@ def finish(sdk_dir) :
 
     FIXME: the used SDK version should be configurable!
     """
+    log.info("finish() finish setting up the emscripten SDK")
     #print os.environ['PATH']
     #print sdk_dir
     log.colored(log.YELLOW, '=== setup emscripten SDK: sdk_dir is ' + sdk_dir)
@@ -100,25 +109,52 @@ def finish(sdk_dir) :
         subprocess.call(args=sdk_dir_emsdk_pwd)
         os.chdir(sdk_dir)
         subprocess.call(args=sdk_dir_emsdk_pwd)
-        #subprocess.call(args='./emsdk update', cwd=sdk_dir, shell=True)
-        #subprocess.call(args=sdk_dir + '/emsdk update')
         subprocess.call(args='./emsdk update', cwd=sdk_dir, shell=True)
         log.colored(log.YELLOW, '=== setup emscripten SDK: install')
-        #subprocess.call(args='./emsdk install {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
-        #subprocess.call(args=sdk_dir_emsdk_install)
-        #subprocess.call(args='/home/rkieley/LocalProjects/usx/research/qpid-proton/tools/fips-sdks/linux/emsdk-portable/emsdk install latest')
-        #subprocess.call(args='./emsdk install {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
-        #subprocess.call(args='./emsdk install {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
+        log.info("installing sdk version " + get_sdk_version() + " into cwd " + sdk_dir)
+
+        ## latest installs latest tag
         subprocess.call(args='./emsdk install latest'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
+
+        ## get_sdk_version installs incoming
+        #subprocess.call(args='./emsdk install {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
         log.colored(log.YELLOW, '=== setup emscripten SDK: activate')
-        #subprocess.call(args='./emsdk activate --embedded {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
-        #subprocess.call(args=sdk_dir + '/emsdk activate --embedded {}'.format(get_sdk_version()))
-        #subprocess.call(args=sdk_dir_emsdk_activate)
-        #subprocess.call(args='./emsdk activate --embedded latest')
-        #format(get_sdk_version()), cwd=sdk_dir, shell=True)
-        #subprocess.call(args='emsdk activate --embedded {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
         subprocess.call(args='emsdk activate --embedded', cwd=sdk_dir, shell=True)
         log.colored(log.YELLOW, '=== setup emscripten SDK: finish')
+        print sdk_version
+        print get_sdk_version()
+        print sdk_dir
+        print os.environ
+        log.info("printing EM_CONFIG")
+        print os.environ.get('EM_CONFIG')
+        log.info("printing os.listdir " + sdk_dir + "/" + "emscripten")
+        emscripten_sdk_dir = os.listdir(sdk_dir + "/emscripten")
+        #print os.listdir(sdk_dir + "/emscripten")
+        print emscripten_sdk_dir
+        log.info("printing os.listdir " + sdk_dir + "/" + "clang")
+        clang_sdk_dir = os.listdir(sdk_dir + "/clang")
+        #print os.listdir(sdk_dir + "/clang")
+        print clang_sdk_dir
+        #print os.environ['LLVM_ROOT']
+        #print os.environ['EMSCRIPTEN_ROOT']
+        #os.symlink(sdk_dir + "/emscripten", sdk_dir + "/emscripten/tagged")
+        #os.symlink(sdk_dir + "/clang", sdk_dir + "/clang/tagged")
+
+        emscripten_latest = sdk_dir + "/emscripten/" + "latest"
+        #os.symlink(sdk_dir + "/emscripten/" + emscripten_sdk_dir[0], sdk_dir + "/emscripten/" + "latest")
+        #if not os.lstat(emscripten_latest)
+        try:
+            os.symlink(sdk_dir + "/emscripten/" + emscripten_sdk_dir[0], emscripten_latest)
+        except:
+            log.info("symlink " + emscripten_latest + " already existed")
+
+        clang_latest = sdk_dir + "/clang/" + "latest"
+        #os.symlink(sdk_dir + "/clang/" + clang_sdk_dir[0], sdk_dir + "/clang/" + "latest")
+        #if not os.lstat(clang_latest)
+        try:
+            os.symlink(sdk_dir + "/clang/" + clang_sdk_dir[0], clang_latest)
+        except:
+            log.info("symlink " + clang_latest + " already existed")
 
 #-------------------------------------------------------------------------------
 def setup(fips_dir, proj_dir) :
@@ -141,6 +177,9 @@ def setup(fips_dir, proj_dir) :
 
     # setup SDK
     log.info("setup emscripten SDK...")
+    print fips_dir
+    print proj_dir
+    log.info("calling finish " + fips_dir)
     finish(get_emsdk_dir(fips_dir))
 
     log.colored(log.GREEN, "done.")

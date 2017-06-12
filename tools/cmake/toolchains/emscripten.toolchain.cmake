@@ -15,7 +15,7 @@
 
 message(STATUS "In emscripten.toolchain.cmake")
 # define emscripten SDK version
-set(FIPS_EMSCRIPTEN_SDK_VERSION "incoming")
+set(FIPS_EMSCRIPTEN_SDK_VERSION "latest")
 if (${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Windows")
     set(EMSC_EMSDK_DIRNAME "../sdks/win/emsdk-portable/emscripten/${FIPS_EMSCRIPTEN_SDK_VERSION}")
 elseif (${CMAKE_HOST_SYSTEM_NAME} STREQUAL "Darwin")
