@@ -21,6 +21,10 @@ def main(args) :
     if sdk_name == 'emscripten' :
         #emscripten.setup(fips_dir, proj_dir)
         #emscripten.setup("/tmp/", "/project0/")
+        log.info("args are " + args)
+        #log.info("fips_dir is " + fips_dir)
+        #log.info("proj_dir is " + proj_dir)
+        #emscripten.setup("/home/rkieley/LocalProjects/usx/research/qpid-proton/tools/", "/project0/")
         emscripten.setup("/home/rkieley/LocalProjects/usx/research/qpid-proton/tools/", "/project0/")
     #elif sdk_name == 'nacl' :
         #nacl.setup(fips_dir, proj_dir)
