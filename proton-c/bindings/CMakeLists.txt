@@ -33,14 +33,16 @@ endif (EMSCRIPTEN_FOUND)
 
 # Prerequisites for C++
 if (CMAKE_CXX_COMPILER)
-  set (DEFAULT_CPP ON)
+  if (NOT CMAKE_TOOLCHAIN_FILE)
+    set (DEFAULT_CPP ON)
+  endif (NOT CMAKE_TOOLCHAIN_FILE)
 endif (CMAKE_CXX_COMPILER)
 
 # Prerequisites for Go
 find_program(GO_EXE go)
 mark_as_advanced(GO_EXE)
 if (GO_EXE)
-  if(WIN32)
+  if(WIN32 OR CMAKE_TOOLCHAIN_FILE)
     # Go on windows requires gcc tool chain
     set (DEFAULT_GO OFF)
   else()
