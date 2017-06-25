@@ -555,11 +555,7 @@ add_library (
   ${qpid-proton-include}
   ${qpid-proton-include-generated}
   )
-#if (BUILD_JAVASCRIPT)
-#add_dependencies(qpid-proton-core generated_c_files emcc_build)
-#else ()
 add_dependencies(qpid-proton-core generated_c_files)
-#endif ()
 
 target_link_libraries (qpid-proton-core ${UUID_LIB} ${SSL_LIB} ${SASL_LIB} ${TIME_LIB} ${PLATFORM_LIBS})
 
@@ -586,14 +582,7 @@ add_library(
   ${qpid-proton-platform-io}
   ${qpid-proton-include-extra}
   )
-
-#if (CMAKE_TOOLCHAIN_BUILD)
-#if (BUILD_JAVASCRIPT)
-#add_dependencies(qpid-proton generated_c_files emcc_build)
-#else ()
 add_dependencies(qpid-proton generated_c_files)
-#endif ()
-
 
 if (MSVC)
   # Add a phony dependency for Windows builds to serialize creation
