@@ -195,9 +195,8 @@ typedef struct broker_t {
 } broker_t;
 
 void broker_stop(broker_t *b) {
-  /* In this broker an interrupt stops a thread, stopping all threads stops the broker */
-  for (size_t i = 0; i < b->threads; ++i)
-    pn_proactor_interrupt(b->proactor);
+  /* Interrupt the proactor to stop the working threads. */
+  pn_proactor_interrupt(b->proactor);
 }
 
 /* Try to send if link is sender and has credit */
@@ -252,9 +251,7 @@ static void check_condition(pn_event_t *e, pn_condition_t *cond) {
   if (pn_condition_is_set(cond)) {
     fprintf(stderr, "%s: %s: %s\n", pn_event_type_name(pn_event_type(e)),
             pn_condition_get_name(cond), pn_condition_get_description(cond));
-    pn_connection_t *c = pn_event_connection(e);
-    if (c) pn_connection_close(c); /* It might be a listener event */
-    exit_code = 1;
+    exit_code = 1;              /* Remeber there was an unexpected error */
   }
 }
 
@@ -283,6 +280,7 @@ static void handle(broker_t* b, pn_event_t* e) {
      pn_transport_t *t = pn_connection_transport(c);
      pn_transport_require_auth(t, false);
      pn_sasl_allowed_mechs(pn_sasl(t), "ANONYMOUS");
+     break;
    }
    case PN_CONNECTION_REMOTE_OPEN: {
      pn_connection_open(pn_event_connection(e)); /* Complete the open */
@@ -338,13 +336,12 @@ static void handle(broker_t* b, pn_event_t* e) {
    }
 
    case PN_TRANSPORT_CLOSED:
-    connection_unsub(b, pn_event_connection(e));
     check_condition(e, pn_transport_condition(pn_event_transport(e)));
+    connection_unsub(b, pn_event_connection(e));
     break;
 
    case PN_CONNECTION_REMOTE_CLOSE:
     check_condition(e, pn_connection_remote_condition(pn_event_connection(e)));
-    connection_unsub(b, pn_event_connection(e));
     pn_connection_close(pn_event_connection(e));
     break;
 
@@ -369,12 +366,13 @@ static void handle(broker_t* b, pn_event_t* e) {
 
  break;
 
-   case PN_PROACTOR_INACTIVE: /* listener and all connections closed */
+   case PN_PROACTOR_INACTIVE:   /* listener and all connections closed */
     broker_stop(b);
     break;
 
    case PN_PROACTOR_INTERRUPT:
     b->finished = true;
+    pn_proactor_interrupt(b->proactor); /* Pass along the interrupt to the other threads */
     break;
 
    default:
@@ -405,7 +403,7 @@ int main(int argc, char **argv) {
   const char *host = (argc > i) ? argv[i++] : "";
   const char *port = (argc > i) ? argv[i++] : "amqp";
 
-  /* Listenf on addr */
+  /* Listen on addr */
   char addr[PN_MAX_ADDR];
   pn_proactor_addr(addr, sizeof(addr), host, port);
   pn_proactor_listen(b.proactor, pn_listener(), addr, 16);

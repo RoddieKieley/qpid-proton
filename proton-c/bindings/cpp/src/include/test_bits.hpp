@@ -26,12 +26,17 @@
 #include <iostream>
 #include <iterator>
 #include <sstream>
+#include <cstring>
 #include <math.h>
 
 namespace test {
 
 struct fail : public std::logic_error {
-    fail(const std::string& what) : logic_error(what) {}
+    explicit fail(const std::string& what) : logic_error(what) {}
+};
+
+struct error : public std::logic_error {
+    explicit error(const std::string& what) : logic_error(what) {}
 };
 
 template <class T, class U>
@@ -54,10 +59,12 @@ inline void assert_equalish(T want, T got, T delta, const std::string& what)
     test::assert_equal((WANT), (GOT), FAIL_MSG("failed ASSERT_EQUAL(" #WANT ", " #GOT ")"))
 #define ASSERT_EQUALISH(WANT, GOT, DELTA) \
     test::assert_equalish((WANT), (GOT), (DELTA), FAIL_MSG("failed ASSERT_EQUALISH(" #WANT ", " #GOT ")"))
+#define ASSERT_THROWS(WANT, EXPR) do { try { EXPR; FAIL("Expected " #WANT); } catch(const WANT&) {} } while(0)
 
 #define RUN_TEST(BAD_COUNT, TEST)                                       \
     do {                                                                \
         try {                                                           \
+            std::cout << "TEST: " << #TEST << std::endl;                \
             TEST;                                                       \
             break;                                                      \
         } catch(const test::fail& e) {                                        \
@@ -67,6 +74,21 @@ inline void assert_equalish(T want, T got, T delta, const std::string& what)
         }                                                               \
             ++BAD_COUNT;                                                \
     } while(0)
+
+/* Like RUN_TEST but only if one of the argv strings is found in the test EXPR */
+#define RUN_ARGV_TEST(BAD_COUNT, EXPR) do {     \
+    if (argc == 1) {                            \
+      RUN_TEST(BAD_COUNT, EXPR);                \
+    } else {                                    \
+      for (int i = 1; i < argc; ++i) {          \
+        if (strstr(#EXPR, argv[i])) {           \
+            RUN_TEST(BAD_COUNT, EXPR);          \
+          break;                                \
+        }                                       \
+      }                                         \
+    }                                           \
+  } while(0)
+
 
 template<class T> std::string str(const T& x) {
     std::ostringstream s; s << std::boolalpha << x; return s.str();

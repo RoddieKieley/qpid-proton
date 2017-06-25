@@ -52,7 +52,7 @@
   libuv functions are thread unsafe, we use a"leader-worker-follower" model as follows:
 
   - At most one thread at a time is the "leader". The leader runs the UV loop till there
-  are events to process and then becomes a "worker"n
+  are events to process and then becomes a "worker"
 
   - Concurrent "worker" threads process events for separate connections or listeners.
   When they run out of work they become "followers"
@@ -149,6 +149,7 @@ typedef struct lsocket_t {
   struct_type type;             /* Always T_LSOCKET */
   pn_listener_t *parent;
   uv_tcp_t tcp;
+  struct lsocket_t *next;
 } lsocket_t;
 
 PN_STRUCT_CLASSDEF(lsocket, CID_pn_listener_socket)
@@ -193,17 +194,13 @@ typedef enum {
   L_UNINIT,                     /**<< Not yet listening */
   L_LISTENING,                  /**<< Listening */
   L_CLOSE,                      /**<< Close requested  */
-  L_CLOSING,                    /**<< Socket close initiated, wait for close */
+  L_CLOSING,                    /**<< Socket close initiated, wait for all to close */
   L_CLOSED                      /**<< User saw PN_LISTENER_CLOSED, all done  */
 } listener_state;
 
 /* A listener */
 struct pn_listener_t {
   work_t work;                  /* Must be first to allow casting */
-
-  size_t nsockets;
-  lsocket_t *sockets;
-  lsocket_t prealloc[1];       /* Pre-allocated socket array, allocate larger if needed */
 
   /* Only used by owner thread */
   pn_event_batch_t batch;
@@ -213,6 +210,7 @@ struct pn_listener_t {
 
   /* Only used by leader */
   addr_t addr;
+  lsocket_t *lsockets;
 
   /* Locked for thread-safe access. uv_listen can't be stopped or cancelled so we can't
    * detach a listener from the UV loop to prevent concurrent access.
@@ -227,10 +225,13 @@ struct pn_listener_t {
 typedef enum { TM_NONE, TM_REQUEST, TM_PENDING, TM_FIRED } timeout_state_t;
 
 struct pn_proactor_t {
+  /* Notification */
+  uv_async_t notify;
+  uv_async_t interrupt;
+
   /* Leader thread  */
   uv_cond_t cond;
   uv_loop_t loop;
-  uv_async_t async;
   uv_timer_t timer;
 
   /* Owner thread: proactor collector and batch can belong to leader or a worker */
@@ -239,23 +240,32 @@ struct pn_proactor_t {
 
   /* Protected by lock */
   uv_mutex_t lock;
-  work_queue_t worker_q;      /* ready for work, to be returned via pn_proactor_wait()  */
-  work_queue_t leader_q;      /* waiting for attention by the leader thread */
-  size_t interrupt;           /* pending interrupts */
+  work_queue_t worker_q; /* ready for work, to be returned via pn_proactor_wait()  */
+  work_queue_t leader_q; /* waiting for attention by the leader thread */
   timeout_state_t timeout_state;
   pn_millis_t timeout;
-  size_t count;               /* connection/listener count for INACTIVE events */
+  size_t active;         /* connection/listener count for INACTIVE events */
   pn_condition_t *disconnect_cond; /* disconnect condition */
-  bool disconnect;            /* disconnect requested */
-  bool inactive;
-  bool has_leader;
-  bool batch_working;         /* batch is being processed in a worker thread */
+
+  bool has_leader;             /* A thread is working as leader */
+  bool disconnect;             /* disconnect requested */
+  bool batch_working;          /* batch is being processed in a worker thread */
+  bool need_interrupt;         /* Need a PN_PROACTOR_INTERRUPT event */
+  bool need_inactive;          /* need INACTIVE event */
 };
 
 
 /* Notify the leader thread that there is something to do outside of uv_run() */
 static inline void notify(pn_proactor_t* p) {
-  uv_async_send(&p->async);
+  uv_async_send(&p->notify);
+}
+
+/* Set the interrupt flag in the leader thread to avoid race conditions. */
+void on_interrupt(uv_async_t *async) {
+  if (async->data) {
+    pn_proactor_t *p = (pn_proactor_t*)async->data;
+    p->need_interrupt = true;
+  }
 }
 
 /* Notify that this work item needs attention from the leader at the next opportunity */
@@ -351,19 +361,22 @@ static inline work_t *batch_work(pn_event_batch_t *batch) {
 }
 
 /* Total count of listener and connections for PN_PROACTOR_INACTIVE */
-static void leader_inc(pn_proactor_t *p) {
+static void add_active(pn_proactor_t *p) {
   uv_mutex_lock(&p->lock);
-  ++p->count;
+  ++p->active;
   uv_mutex_unlock(&p->lock);
 }
 
-static void leader_dec(pn_proactor_t *p) {
-  uv_mutex_lock(&p->lock);
-  assert(p->count > 0);
-  if (--p->count == 0) {
-    p->inactive = true;
-    notify(p);
+static void remove_active_lh(pn_proactor_t *p) {
+  assert(p->active > 0);
+  if (--p->active == 0) {
+    p->need_inactive = true;
   }
+}
+
+static void remove_active(pn_proactor_t *p) {
+  uv_mutex_lock(&p->lock);
+  remove_active_lh(p);
   uv_mutex_unlock(&p->lock);
 }
 
@@ -385,7 +398,7 @@ static void on_close_pconnection_final(uv_handle_t *h) {
      will be valid, but no-ops.
   */
   pconnection_t *pc = (pconnection_t*)h->data;
-  leader_dec(pc->work.proactor);
+  remove_active(pc->work.proactor);
   pconnection_free(pc);
 }
 
@@ -413,10 +426,15 @@ static void listener_close_lh(pn_listener_t* l) {
 static void on_close_lsocket(uv_handle_t *h) {
   lsocket_t* ls = (lsocket_t*)h->data;
   pn_listener_t *l = ls->parent;
-  uv_mutex_lock(&l->lock);
-  --l->nsockets;
-  listener_close_lh(l);
-  uv_mutex_unlock(&l->lock);
+  if (l) {
+    /* Remove from list */
+    lsocket_t **pp = &l->lsockets;
+    for (; *pp != ls; pp = &(*pp)->next)
+      ;
+    *pp = ls->next;
+    work_notify(&l->work);
+  }
+  free(ls);
 }
 
 static pconnection_t *get_pconnection(pn_connection_t* c) {
@@ -441,11 +459,8 @@ static inline void pconnection_bad_connect(pconnection_t *pc, int err) {
 static void pconnection_set_error(pconnection_t *pc, int err, const char* what) {
   pn_connection_driver_t *driver = &pc->driver;
   pn_connection_driver_bind(driver); /* Make sure we are bound so errors will be reported */
-  if (!pn_condition_is_set(pn_transport_condition(driver->transport))) {
-    pn_connection_driver_errorf(driver, uv_err_name(err), "%s %s:%s: %s",
-                                what, pc->addr.host, pc->addr.port,
-                                uv_strerror(err));
-  }
+  pni_proactor_set_cond(pn_transport_condition(driver->transport),
+                        what, pc->addr.host , pc->addr.port, uv_strerror(err));
 }
 
 /* Set the error condition and close the driver. */
@@ -459,9 +474,7 @@ static void pconnection_error(pconnection_t *pc, int err, const char* what) {
 static void listener_error_lh(pn_listener_t *l, int err, const char* what) {
   assert(err);
   if (!pn_condition_is_set(l->condition)) {
-    pn_condition_format(l->condition, uv_err_name(err), "%s %s:%s: %s",
-                        what, l->addr.host, l->addr.port,
-                        uv_strerror(err));
+    pni_proactor_set_cond(l->condition, what, l->addr.host, l->addr.port, uv_strerror(err));
   }
   listener_close_lh(l);
 }
@@ -486,7 +499,7 @@ static int pconnection_init(pconnection_t *pc) {
     }
   }
   if (!err) {
-    leader_inc(pc->work.proactor);
+    add_active(pc->work.proactor);
   } else {
     pconnection_error(pc, err, "initialization");
   }
@@ -592,7 +605,7 @@ static bool leader_connect(pconnection_t *pc) {
   int err = pconnection_init(pc);
   if (!err) err = leader_resolve(pc->work.proactor, &pc->addr, false);
   if (err) {
-    pconnection_error(pc, err, "connect resolving");
+    pconnection_error(pc, err, "on connect resolving");
     return true;
   } else {
     try_connect(pc);
@@ -600,16 +613,27 @@ static bool leader_connect(pconnection_t *pc) {
   }
 }
 
-static int lsocket_init(lsocket_t *ls, pn_listener_t *l, struct addrinfo *ai) {
+static int lsocket(pn_listener_t *l, struct addrinfo *ai) {
+  lsocket_t *ls = (lsocket_t*)calloc(1, sizeof(lsocket_t));
   ls->type = T_LSOCKET;
-  ls->parent = l;
   ls->tcp.data = ls;
+  ls->parent = NULL;
+  ls->next = NULL;
   int err = uv_tcp_init(&l->work.proactor->loop, &ls->tcp);
-  if (!err) {
+  if (err) {
+    free(ls);                   /* Will never be closed */
+  } else {
     int flags = (ai->ai_family == AF_INET6) ? UV_TCP_IPV6ONLY : 0;
     err = uv_tcp_bind(&ls->tcp, ai->ai_addr, flags);
     if (!err) err = uv_listen((uv_stream_t*)&ls->tcp, l->backlog, on_connection);
-    if (err) uv_close((uv_handle_t*)&ls->tcp, NULL);
+    if (!err) {
+      /* Add to l->lsockets list */
+      ls->parent = l;
+      ls->next = l->lsockets;
+      l->lsockets = ls;
+    } else {
+      uv_close((uv_handle_t*)&ls->tcp, on_close_lsocket); /* Freed by on_close_lsocket */
+    }
   }
   return err;
 }
@@ -618,37 +642,27 @@ static int lsocket_init(lsocket_t *ls, pn_listener_t *l, struct addrinfo *ai) {
 
 /* Listen on all available addresses */
 static void leader_listen_lh(pn_listener_t *l) {
-  leader_inc(l->work.proactor);
+  add_active(l->work.proactor);
   int err = leader_resolve(l->work.proactor, &l->addr, true);
   if (!err) {
-    /* Count addresses, allocate enough space */
-    size_t len = 0;
-    for (struct addrinfo *ai = l->addr.getaddrinfo.addrinfo; ai; ai = ai->ai_next) {
-      ++len;
-    }
-    assert(len > 0);            /* Guaranteed by getaddrinfo() */
-    l->sockets = (len > ARRAY_LEN(l->prealloc)) ? (lsocket_t*)calloc(len, sizeof(lsocket_t)) : l->prealloc;
     /* Find the working addresses */
-    l->nsockets = 0;
-    int first_err = 0;
     for (struct addrinfo *ai = l->addr.getaddrinfo.addrinfo; ai; ai = ai->ai_next) {
-      lsocket_t *ls = &l->sockets[l->nsockets];
-      int err2 = lsocket_init(ls, l, ai);
-      if (!err2) {
-        ++l->nsockets;                    /* Next socket */
-      } else if (!first_err) {
-        first_err = err2;
+      int err2 = lsocket(l, ai);
+      if (err2) {
+        err = err2;
       }
     }
     uv_freeaddrinfo(l->addr.getaddrinfo.addrinfo);
     l->addr.getaddrinfo.addrinfo = NULL;
-    if (l->nsockets == 0) err = first_err;
+    if (l->lsockets) {    /* Ignore errors if we got at least one good listening socket */
+      err = 0;
+    }
   }
-  /* Always put an OPEN event for symmetry, even if we immediately close with err */
-  pn_collector_put(l->collector, pn_listener__class(), l, PN_LISTENER_OPEN);
   if (err) {
     listener_error_lh(l, err, "listening on");
   }
+  /* Always put an OPEN event for symmetry, even if we have an error. */
+  pn_collector_put(l->collector, pn_listener__class(), l, PN_LISTENER_OPEN);
 }
 
 void pn_listener_free(pn_listener_t *l) {
@@ -659,7 +673,11 @@ void pn_listener_free(pn_listener_t *l) {
     if (l->collector) pn_collector_free(l->collector);
     if (l->condition) pn_condition_free(l->condition);
     if (l->attachments) pn_free(l->attachments);
-    if (l->sockets && l->sockets != l->prealloc) free(l->sockets);
+    while (l->lsockets) {
+      lsocket_t *ls = l->lsockets;
+      l->lsockets = ls->next;
+      free(ls);
+    }
     assert(!l->accept.front);
     free(l);
   }
@@ -696,13 +714,13 @@ static bool leader_process_listener(pn_listener_t *l) {
 
    case L_CLOSE:                /* Close requested, start closing lsockets */
     l->state = L_CLOSING;
-    for (size_t i = 0; i < l->nsockets; ++i) {
-      uv_safe_close((uv_handle_t*)&l->sockets[i].tcp, on_close_lsocket);
+    for (lsocket_t *ls = l->lsockets; ls; ls = ls->next) {
+      uv_safe_close((uv_handle_t*)&ls->tcp, on_close_lsocket);
     }
     /* NOTE: Fall through in case we have 0 sockets - e.g. resolver error */
 
    case L_CLOSING:              /* Closing - can we send PN_LISTENER_CLOSE? */
-    if (l->nsockets == 0) {
+    if (!l->lsockets) {
       l->state = L_CLOSED;
       pn_collector_put(l->collector, pn_listener__class(), l, PN_LISTENER_CLOSE);
     }
@@ -710,7 +728,7 @@ static bool leader_process_listener(pn_listener_t *l) {
 
    case L_CLOSED:              /* Closed, has LISTENER_CLOSE has been processed? */
     if (!pn_collector_peek(l->collector)) {
-      leader_dec(l->work.proactor);
+      remove_active(l->work.proactor);
       closed = true;
     }
   }
@@ -810,16 +828,17 @@ static pn_event_t *proactor_batch_next(pn_event_batch_t *batch) {
 /* Return the next event batch or NULL if no events are available */
 static pn_event_batch_t *get_batch_lh(pn_proactor_t *p) {
   if (!p->batch_working) {       /* Can generate proactor events */
-    if (p->inactive) {
-      p->inactive = false;
+    if (p->need_inactive) {
+      p->need_inactive = false;
       return proactor_batch_lh(p, PN_PROACTOR_INACTIVE);
     }
-    if (p->interrupt > 0) {
-      --p->interrupt;
+    if (p->need_interrupt) {
+      p->need_interrupt = false;
       return proactor_batch_lh(p, PN_PROACTOR_INTERRUPT);
     }
     if (p->timeout_state == TM_FIRED) {
       p->timeout_state = TM_NONE;
+      remove_active_lh(p);
       return proactor_batch_lh(p, PN_PROACTOR_TIMEOUT);
     }
   }
@@ -929,9 +948,11 @@ static void on_proactor_disconnect(uv_handle_t* h, void* v) {
      }
      case T_LSOCKET: {
        pn_listener_t *l = ((lsocket_t*)h->data)->parent;
-       pn_condition_t *cond = l->work.proactor->disconnect_cond;
-       if (cond) {
-         pn_condition_copy(pn_listener_condition(l), cond);
+       if (l) {
+         pn_condition_t *cond = l->work.proactor->disconnect_cond;
+         if (cond) {
+           pn_condition_copy(pn_listener_condition(l), cond);
+         }
        }
        pn_listener_close(l);
        break;
@@ -984,7 +1005,7 @@ static pn_event_batch_t *leader_lead_lh(pn_proactor_t *p, uv_run_mode mode) {
     }
   }
   batch = get_batch_lh(p);      /* Check for work */
-  if (!batch) { /* No work, run the UV loop */
+  if (!batch) {                 /* No work, run the UV loop */
     uv_mutex_unlock(&p->lock);  /* Unlock to run UV loop */
     uv_run(&p->loop, mode);
     uv_mutex_lock(&p->lock);
@@ -1072,10 +1093,12 @@ pn_proactor_t *pn_event_proactor(pn_event_t *e) {
 }
 
 void pn_proactor_interrupt(pn_proactor_t *p) {
-  uv_mutex_lock(&p->lock);
-  ++p->interrupt;
-  uv_mutex_unlock(&p->lock);
-  notify(p);
+  /* NOTE: pn_proactor_interrupt must be async-signal-safe so we cannot use
+     locks to update shared proactor state here. Instead we use a dedicated
+     uv_async, the on_interrupt() callback will set the interrupt flag in the
+     safety of the leader thread.
+   */
+  uv_async_send(&p->interrupt);
 }
 
 void pn_proactor_disconnect(pn_proactor_t *p, pn_condition_t *cond) {
@@ -1096,6 +1119,7 @@ void pn_proactor_set_timeout(pn_proactor_t *p, pn_millis_t t) {
   uv_mutex_lock(&p->lock);
   p->timeout = t;
   p->timeout_state = TM_REQUEST;
+  ++p->active;
   uv_mutex_unlock(&p->lock);
   notify(p);
 }
@@ -1104,6 +1128,7 @@ void pn_proactor_cancel_timeout(pn_proactor_t *p) {
   uv_mutex_lock(&p->lock);
   if (p->timeout_state != TM_NONE) {
     p->timeout_state = TM_NONE;
+    remove_active_lh(p);
     notify(p);
   }
   uv_mutex_unlock(&p->lock);
@@ -1111,7 +1136,7 @@ void pn_proactor_cancel_timeout(pn_proactor_t *p) {
 
 void pn_proactor_connect(pn_proactor_t *p, pn_connection_t *c, const char *addr) {
   pconnection_t *pc = pconnection(p, c, false);
-  assert(pc);                                  /* FIXME aconway 2017-03-31: memory safety */
+  assert(pc);                                  /* TODO aconway 2017-03-31: memory safety */
   pn_connection_open(pc->driver.connection);   /* Auto-open */
   parse_addr(&pc->addr, addr);
   work_start(&pc->work);
@@ -1129,8 +1154,10 @@ static void on_proactor_free(uv_handle_t* h, void* v) {
   if (h->type == UV_TCP) {      /* Put the corresponding work item on the leader_q for cleanup */
     work_t *w = NULL;
     switch (*(struct_type*)h->data) {
-     case T_CONNECTION: w = (work_t*)h->data; break;
-     case T_LSOCKET: w = &((lsocket_t*)h->data)->parent->work; break;
+     case T_CONNECTION:
+      w = (work_t*)h->data; break;
+     case T_LSOCKET:
+      w = &((lsocket_t*)h->data)->parent->work; break;
      default: break;
     }
     if (w && w->next == work_unqueued) {
@@ -1155,7 +1182,9 @@ pn_proactor_t *pn_proactor() {
   uv_loop_init(&p->loop);
   uv_mutex_init(&p->lock);
   uv_cond_init(&p->cond);
-  uv_async_init(&p->loop, &p->async, NULL);
+  uv_async_init(&p->loop, &p->notify, NULL);
+  uv_async_init(&p->loop, &p->interrupt, on_interrupt);
+  p->interrupt.data = p;
   uv_timer_init(&p->loop, &p->timer);
   p->timer.data = p;
   p->disconnect_cond = pn_condition();
@@ -1302,5 +1331,5 @@ int pn_netaddr_str(const pn_netaddr_t* na, char *buf, size_t len) {
 }
 
 pn_millis_t pn_proactor_now(void) {
-    return uv_hrtime() / 1000000; // uv_hrtime returns time in nanoseconds
+  return uv_hrtime() / 1000000; // uv_hrtime returns time in nanoseconds
 }

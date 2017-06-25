@@ -41,6 +41,7 @@ foreach(example
     helloworld_direct
     simple_recv
     simple_send
+    message_properties
     scheduled_send_03
     direct_recv
     direct_send
@@ -67,6 +68,11 @@ if(HAS_CPP11)
 endif()
 
 add_cpp_test(cpp-example-container ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/example_test.py -v ContainerExampleTest)
+
+if (NOT SSL_IMPL STREQUAL none)
+add_cpp_test(cpp-example-container-ssl ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/example_test.py -v ContainerExampleSSLTest)
+endif()
+
 
 
 

@@ -141,9 +141,12 @@ PNP_EXTERN void pn_proactor_listen(pn_proactor_t *proactor, pn_listener_t *liste
  * Disconnect all connections and listeners belonging to the proactor.
  *
  * @ref PN_LISTENER_CLOSE, @ref PN_TRANSPORT_CLOSED and other @ref proactor_events are
- * generated as usual.  If no new listeners or connections are created, then a
- * @ref PN_PROACTOR_INACTIVE event will be generated when all connections and
- * listeners are disconnected.
+ * generated as usual.
+ *
+ * If no new listeners or connections are created, then a @ref
+ * PN_PROACTOR_INACTIVE event will be generated when all connections and
+ * listeners are disconnected and no timeout is pending - see
+ * pn_proactor_set_timeout() pn_proactor_cancel_timeout()
  *
  * Note the proactor remains active, connections and listeners created after a call to
  * pn_proactor_disconnect() are not affected by it.
@@ -196,12 +199,13 @@ PNP_EXTERN void pn_proactor_done(pn_proactor_t *proactor, pn_event_batch_t *even
 /**
  * Return a @ref PN_PROACTOR_INTERRUPT event as soon as possible.
  *
- * Exactly one @ref PN_PROACTOR_INTERRUPT event is generated for each call to
- * pn_proactor_interrupt().  If threads are blocked in pn_proactor_wait(), one
- * of them will be interrupted, otherwise the interrupt will be returned by a
- * future call to pn_proactor_wait(). Calling pn_proactor_interrupt().
+ * At least one PN_PROACTOR_INTERRUPT event will be returned after this call.
+ * Interrupts can be "coalesced" - if several pn_proactor_interrupt() calls
+ * happen close together, there may be only one PN_PROACTOR_INTERRUPT event that
+ * occurs after all of them.
  *
- * @note Thread safe
+ * @note Thread-safe and async-signal-safe: can be called in a signal handler.
+ * This is the only pn_proactor function that is async-signal-safe.
  */
 PNP_EXTERN void pn_proactor_interrupt(pn_proactor_t *proactor);
 
@@ -278,8 +282,12 @@ PNP_EXTERN pn_proactor_t *pn_event_proactor(pn_event_t *event);
 /**
  * Get the real elapsed time since an arbitrary point in the past in milliseconds.
  *
- * This may be used as a portable way to get a timestamp for the current time. It is monotonically
- * increasing and will never go backwards.
+ * This may be used as a portable way to get a process-local timestamp for the
+ * current time. It is monotonically increasing and will never go backwards.
+ *
+ * Note: this is not a suitable value for an AMQP timestamp to be sent as part
+ * of a message.  Such a timestamp should use the real time in milliseconds
+ * since the epoch.
  *
  * @note Thread safe.
  */
