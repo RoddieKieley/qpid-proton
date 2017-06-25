@@ -18,14 +18,7 @@
 #
 cmake_minimum_required (VERSION 2.8.7)
 
-
-#find_package(Emscripten)
-#if (EMSCRIPTEN_FOUND)
-#  set (DEFAULT_JAVASCRIPT ON)
-#endif (EMSCRIPTEN_FOUND)
-
 project (Proton C)
-
 
 # Enable C++ now for examples and bindings subdirectories, but make it optional.
 enable_language(CXX OPTIONAL)

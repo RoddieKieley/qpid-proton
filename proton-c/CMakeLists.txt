@@ -22,13 +22,6 @@ include(CheckSymbolExists)
 
 include(soversion.cmake)
 
-if (BUILD_JAVASCRIPT)
-  #set(CMAKE_TOOLCHAIN_FILE "/home/rkieley/LocalProjects/usx/research/qpid-proton/tools/cmake/toolchains/emscripten.toolchain.cmake")
-  #include("/home/rkieley/LocalProjects/usx/research/qpid-proton/tools/cmake/toolchains/emscripten.toolchain.cmake")
-  #add_test (javascript-codec ${env_py} node ${pn_test_root}/javascript/codec.js)
-  #add_test (javascript-message ${env_py} node ${pn_test_root}/javascript/message.js)
-endif (BUILD_JAVASCRIPT)
-
 add_custom_target(docs)
 add_custom_target(doc DEPENDS docs)
 
@@ -102,15 +95,6 @@ add_custom_target(
   generated_c_files
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/protocol.h ${CMAKE_CURRENT_BINARY_DIR}/src/encodings.h
   )
-
-#if (CMAKE_TOOLCHAIN_BUILD)
-if (BUILD_JAVASCRIPT)
-  add_custom_target(
-	emcc_build 
-    ${env_py} "PYTHONPATH=${perf_pythonpath}" ${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/bin/setup.py" "emscripten")
-  add_test (javascript-codec ${env_py} node ${pn_test_root}/javascript/codec.js)
-  add_test (javascript-message ${env_py} node ${pn_test_root}/javascript/message.js)
-endif ()
 
 # Select IO impl
 if(PN_WINAPI)
@@ -571,12 +555,11 @@ add_library (
   ${qpid-proton-include}
   ${qpid-proton-include-generated}
   )
-#if (CMAKE_TOOLCHAIN_BUILD)
-if (BUILD_JAVASCRIPT)
-add_dependencies(qpid-proton-core generated_c_files emcc_build)
-else ()
+#if (BUILD_JAVASCRIPT)
+#add_dependencies(qpid-proton-core generated_c_files emcc_build)
+#else ()
 add_dependencies(qpid-proton-core generated_c_files)
-endif ()
+#endif ()
 
 target_link_libraries (qpid-proton-core ${UUID_LIB} ${SSL_LIB} ${SASL_LIB} ${TIME_LIB} ${PLATFORM_LIBS})
 
@@ -605,11 +588,11 @@ add_library(
   )
 
 #if (CMAKE_TOOLCHAIN_BUILD)
-if (BUILD_JAVASCRIPT)
-add_dependencies(qpid-proton generated_c_files emcc_build)
-else ()
+#if (BUILD_JAVASCRIPT)
+#add_dependencies(qpid-proton generated_c_files emcc_build)
+#else ()
 add_dependencies(qpid-proton generated_c_files)
-endif ()
+#endif ()
 
 
 if (MSVC)
@@ -845,9 +828,8 @@ endif()
 
 mark_as_advanced (RUBY_EXE RSPEC_EXE)
 
-#if (BUILD_JAVASCRIPT)
-  #set(CMAKE_TOOLCHAIN_FILE "/home/rkieley/LocalProjects/usx/research/qpid-proton/tools/cmake/toolchains/emscripten.toolchain.cmake")
-  #add_test (javascript-codec ${env_py} node ${pn_test_root}/javascript/codec.js)
-  #add_test (javascript-message ${env_py} node ${pn_test_root}/javascript/message.js)
-#endif (BUILD_JAVASCRIPT)
+if (BUILD_JAVASCRIPT)
+  add_test (javascript-codec ${env_py} node ${pn_test_root}/javascript/codec.js)
+  add_test (javascript-message ${env_py} node ${pn_test_root}/javascript/message.js)
+endif (BUILD_JAVASCRIPT)
 

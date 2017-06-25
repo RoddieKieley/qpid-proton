@@ -51,7 +51,6 @@ endif (GO_EXE)
 if(SWIG_FOUND)
   # Add any new swig bindings here - the directory name must be the same as the binding name
   list(APPEND BINDINGS python ruby php perl)
-  ##list(APPEND BINDINGS python)
 
   include(UseSWIG)
 
@@ -143,8 +142,3 @@ foreach(BINDING ${BINDINGS})
     add_subdirectory(${BINDING})
   endif ()
 endforeach(BINDING)
-  #if ((BUILD_${UBINDING}) AND NOT (${BINDING} MATCHES *java*))
-  #if ((BUILD_${UBINDING}) AND NOT (${BINDING} MATCHES javascript))
-    #if (NOT (${BINDING} STREQUAL 'javascript'))
-    #endif()
-  #endif ()
