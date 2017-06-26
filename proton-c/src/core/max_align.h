@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-#if __STDC_VERSION__ >= 201112
+#if __STDC_VERSION__ >= 201112 && !__EMSCRIPTEN__
 /* Use standard max_align_t for alignment on c11 */
 typedef max_align_t pn_max_align_t;
 #else
