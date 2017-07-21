@@ -14,7 +14,8 @@ def main(args) :
     log.info(log.YELLOW + "script_dir is " + script_dir)
     if sdk_name == 'emscripten' :
         #emscripten.setup("/home/rkieley/LocalProjects/usx/research/qpid-proton/tools/", "/project0/")
-        emscripten.setup(script_dir + "/../tools", "/project0/")
+        #emscripten.setup(script_dir + "/../tools", "/project0/")
+        emscripten.setup(script_dir + "/../", "/project0/")
     else :
         log.error("invalid SDK name (must be 'emscripten'")
 
