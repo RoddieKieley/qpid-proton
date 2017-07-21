@@ -14,7 +14,7 @@ archives = {
 
 urls = {
 #    'win':      'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['win']),
-#    'osx' :     'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['osx']),
+    'osx' :     'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['osx']),
     'linux' :   'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['linux'])
 }
 
@@ -22,7 +22,7 @@ urls = {
 # be set in the emscripten.toolchain.cmake file!
 sdk_version = {
 #    'win': 'sdk-incoming-64bit',
-#    'osx': 'sdk-incoming-64bit',
+    'osx': 'sdk-incoming-64bit',
     'linux': 'sdk-incoming-64bit'
 }
 
@@ -89,9 +89,9 @@ def finish(sdk_dir) :
         subprocess.call(args='emsdk.bat activate --embedded {}'.format(get_sdk_version()), cwd=sdk_dir, shell=True)
     else :
         log.colored(log.YELLOW, '=== setup emscripten SDK: update')
-        subprocess.call(args=sdk_dir_emsdk_pwd)
+        #subprocess.call(args=sdk_dir_emsdk_pwd)
         os.chdir(sdk_dir)
-        subprocess.call(args=sdk_dir_emsdk_pwd)
+        #subprocess.call(args=sdk_dir_emsdk_pwd)
         subprocess.call(args='./emsdk update', cwd=sdk_dir, shell=True)
         log.colored(log.YELLOW, '=== setup emscripten SDK: install')
         log.info("installing sdk version " + get_sdk_version() + " into cwd " + sdk_dir)
