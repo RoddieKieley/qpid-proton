@@ -101,7 +101,8 @@ def finish(sdk_dir) :
 
         ## get_sdk_version installs incoming
         log.colored(log.YELLOW, '=== setup emscripten SDK: activate')
-        subprocess.call(args='emsdk activate --embedded', cwd=sdk_dir, shell=True)
+        os.chdir(sdk_dir)
+        subprocess.call(args='./emsdk activate --embedded', cwd=sdk_dir, shell=True)
         log.colored(log.YELLOW, '=== setup emscripten SDK: finish')
         emscripten_sdk_dir = os.listdir(sdk_dir + "/emscripten")
         clang_sdk_dir = os.listdir(sdk_dir + "/clang")
