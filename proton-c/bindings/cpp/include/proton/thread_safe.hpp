@@ -25,10 +25,10 @@
 #include "./fwd.hpp"
 #include "./internal/config.hpp"
 #include "./connection.hpp"
-#include "./event_loop.hpp"
 #include "./function.hpp"
 #include "./internal/object.hpp"
 #include "./internal/type_traits.hpp"
+#include "./work_queue.hpp"
 
 #include <functional>
 
@@ -63,12 +63,6 @@ template <class T>
 class thread_safe : private internal::pn_ptr_base, private internal::endpoint_traits<T> {
     typedef typename T::pn_type pn_type;
 
-    struct inject_decref : public void_function0 {
-        pn_type* ptr_;
-        inject_decref(pn_type* p) : ptr_(p) {}
-        void operator()() PN_CPP_OVERRIDE { decref(ptr_); delete this; }
-    };
-
   public:
     /// @cond INTERNAL
     static void operator delete(void*) {}
@@ -76,20 +70,13 @@ class thread_safe : private internal::pn_ptr_base, private internal::endpoint_tr
 
     ~thread_safe() {
         if (ptr()) {
-            if (!!event_loop()) {
-#if PN_CPP_HAS_STD_BIND
-                event_loop().inject(std::bind(&decref, ptr()));
-#else
-                event_loop().inject(*new inject_decref(ptr()));
-#endif
-            } else {
-                decref(ptr());
-            }
+            if (!!work_queue().impl_) schedule_work(&work_queue(), &decref, (void*)ptr());
+            else decref(ptr());
         }
     }
 
-    /// Get the event loop for this object.
-    class event_loop& event_loop() { return event_loop::get(ptr()); }
+    /// Get the work queue for this object.
+    class work_queue& work_queue() { return work_queue::get(ptr()); }
 
     /// Get the thread-unsafe proton object wrapped by this thread_safe<T>
     T unsafe() { return T(ptr()); }

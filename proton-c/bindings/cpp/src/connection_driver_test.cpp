@@ -31,6 +31,7 @@
 #include "proton/sender.hpp"
 #include "proton/sender_options.hpp"
 #include "proton/source_options.hpp"
+#include "proton/thread_safe.hpp"
 #include "proton/types_fwd.hpp"
 #include "proton/uuid.hpp"
 
@@ -57,8 +58,8 @@ struct in_memory_driver : public connection_driver {
     byte_stream& writes;
     int spinning;
 
-    in_memory_driver(byte_stream& rd, byte_stream& wr) :
-        reads(rd), writes(wr), spinning(0) {}
+    in_memory_driver(byte_stream& rd, byte_stream& wr, const std::string& name) :
+        connection_driver(name), reads(rd), writes(wr), spinning(0)  {}
 
     void do_read() {
         mutable_buffer rbuf = read_buffer();
@@ -102,8 +103,10 @@ struct driver_pair {
     byte_stream ab, ba;
     in_memory_driver a, b;
 
-    driver_pair(const connection_options& oa, const connection_options& ob)
-        : a(ba, ab), b(ab, ba)
+    driver_pair(const connection_options& oa, const connection_options& ob,
+                const std::string& name=""
+    ) :
+        a(ba, ab, name+"a"), b(ab, ba, name+"b")
     {
         a.connect(oa);
         b.accept(ob);
@@ -128,14 +131,17 @@ struct record_handler : public messaging_handler {
     std::deque<proton::message> messages;
 
     void on_receiver_open(receiver &l) PN_CPP_OVERRIDE {
+        messaging_handler::on_receiver_open(l);
         receivers.push_back(l);
     }
 
     void on_sender_open(sender &l) PN_CPP_OVERRIDE {
+        messaging_handler::on_sender_open(l);
         senders.push_back(l);
     }
 
     void on_session_open(session &s) PN_CPP_OVERRIDE {
+        messaging_handler::on_session_open(s);
         sessions.push_back(s);
     }
 
