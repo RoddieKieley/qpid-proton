@@ -13,7 +13,7 @@ archives = {
 }
 
 urls = {
-#    'win':      'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['win']),
+    'win':      'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['win']),
     'osx' :     'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['osx']),
     'linux' :   'http://s3.amazonaws.com/mozilla-games/emscripten/releases/{}'.format(archives['linux'])
 }
@@ -21,7 +21,7 @@ urls = {
 # define SDK version, note that the right version must also
 # be set in the emscripten.toolchain.cmake file!
 sdk_version = {
-#    'win': 'sdk-incoming-64bit',
+    'win': 'sdk-incoming-64bit',
     'osx': 'sdk-incoming-64bit',
     'linux': 'sdk-incoming-64bit'
 }
@@ -34,7 +34,12 @@ def get_sdk_url() :
 #-------------------------------------------------------------------------------
 def get_sdk_dir(fips_dir) :
     """return the platform-specific SDK dir"""
-    return util.get_workspace_dir(fips_dir) + '/sdks/' + util.get_host_platform()
+    if util.get_host_platform() == 'win' :
+        return util.get_workspace_dir(fips_dir) + '\\sdks\\' + util.get_host_platform()
+    else :
+        return util.get_workspace_dir(fips_dir) + '/sdks/' + util.get_host_platform()
+
+#return util.get_workspace_dir(fips_dir) + '/sdks/' + util.get_host_platform()
 
 #-------------------------------------------------------------------------------
 def get_sdk_version() :
@@ -43,7 +48,12 @@ def get_sdk_version() :
 #-------------------------------------------------------------------------------
 def get_emsdk_dir(fips_dir) :
     """return the emscripten SDK path (emsdk-portable)"""
-    return get_sdk_dir(fips_dir) + '/emsdk-portable'
+    if util.get_host_platform() == 'win' :
+        return get_sdk_dir(fips_dir) + '\\emsdk-portable'
+    else :
+        return get_sdk_dir(fips_dir) + '/emsdk-portable'
+
+#return get_sdk_dir(fips_dir) + '/emsdk-portable'
 
 #-------------------------------------------------------------------------------
 def get_archive_name() :
