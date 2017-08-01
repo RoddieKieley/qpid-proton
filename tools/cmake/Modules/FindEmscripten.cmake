@@ -22,8 +22,6 @@
 # sets EMSCRIPTEN_FOUND Emscripten (https://github.com/kripken/emscripten) is a
 # C/C++ to JavaScript cross-compiler used to generate the JavaScript bindings.
 
-#include(DownloadEmscripten)
-
 if (NOT EMSCRIPTEN_FOUND)
     # First check that Node.js is installed as that is needed by Emscripten.
     find_program(NODE node)
@@ -35,9 +33,6 @@ if (NOT EMSCRIPTEN_FOUND)
         find_program(EMCC emcc)
         if (NOT EMCC)
             message(STATUS "Emscripten (https://github.com/kripken/emscripten) is not installed: can't build JavaScript binding")
-			#execute_process(${env_py} PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../bin/setup.py)
-			#execute_process("echo echo testtesttest")
-			#execute_process(COMMAND ${env_py} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../../bin/setup.py)
         else (NOT EMCC)
             message(STATUS "Emscripten (https://github.com/kripken/emscripten) is installed: can cross compile JavaScript")
             set(EMSCRIPTEN_FOUND ON)
@@ -45,14 +40,3 @@ if (NOT EMSCRIPTEN_FOUND)
     endif (NOT NODE)
 endif (NOT EMSCRIPTEN_FOUND)
 
-# If EMSCRIPTEN_FOUND is not set then downloads and sets up Emscripten
-# C/C++ to JavaScript cross-compiler used to generate the JavaScript bindings.
-
-#if (NOT EMSCRIPTEN_FOUND)
-	#if (CMAKE_TOOLCHAIN_FILE)
-    	#message(STATUS "Emscripten not found... toolchain file specified... attempt Emscripten download")
-		#execute_process("echo echo testtesttest")
-		#execute_process(COMMAND ${env_py} ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../bin/setup.py)
-	#endif (CMAKE_TOOLCHAIN_FILE)
-#endif (NOT EMSCRIPTEN_FOUND)
-	
