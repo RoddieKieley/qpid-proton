@@ -543,6 +543,7 @@ class Connector(Handler):
         self.password = None
         self.virtual_host = None
         self.ssl_sni = None
+        self.max_frame_size = None
 
     def _connect(self, connection, reactor):
         assert(reactor is not None)
@@ -575,6 +576,8 @@ class Connector(Handler):
                 raise SSLUnavailable("amqps: SSL libraries not found")
             self.ssl = SSL(transport, self.ssl_domain)
             self.ssl.peer_hostname = self.ssl_sni or self.virtual_host or url.host
+        if self.max_frame_size:
+            transport.max_frame_size = self.max_frame_size
 
     def on_connection_local_open(self, event):
         self._connect(event.connection, event.reactor)
@@ -735,6 +738,7 @@ class Container(Reactor):
             # only set hostname if virtual-host is a non-empty string
             conn.hostname = connector.virtual_host
         connector.ssl_sni = kwargs.get('sni')
+        connector.max_frame_size = kwargs.get('max_frame_size')
 
         conn._overrides = connector
         if url: connector.address = Urls([url])
@@ -864,6 +868,11 @@ class Container(Reactor):
                     if hasattr(event.delivery, "transaction"):
                         event.transaction = event.delivery.transaction
                         event.delivery.transaction.handle_outcome(event)
+
+                def on_unhandled(self, method, event):
+                    if handler:
+                        event.dispatch(handler)
+
             context._txn_ctrl = self.create_sender(context, None, name='txn-ctrl', handler=InternalTransactionHandler())
             context._txn_ctrl.target.type = Terminus.COORDINATOR
             context._txn_ctrl.target.capabilities.put_object(symbol(u'amqp:local-transactions'))

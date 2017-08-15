@@ -51,7 +51,6 @@
 #include <fcntl.h>
 #include <assert.h>
 
-
 /** @file
  * SSL/TLS support API.
  *
@@ -60,7 +59,6 @@
 
 static int ssl_initialized;
 static int ssl_ex_data_index;
-static int ssl_session_ex_data_index;
 
 typedef struct pn_ssl_session_t pn_ssl_session_t;
 
@@ -74,6 +72,9 @@ struct pn_ssl_domain_t {
   char *trusted_CAs;
 
   int   ref_count;
+#if OPENSSL_VERSION_NUMBER >= 0x10100000
+  int default_seclevel;
+#endif
   pn_ssl_mode_t mode;
   pn_ssl_verify_mode_t verify_mode;
 
@@ -356,12 +357,22 @@ static int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
   return preverify_ok;
 }
 
+// This was introduced in v1.1
+#if OPENSSL_VERSION_NUMBER < 0x10100000
+int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g)
+{
+  dh->p = p;
+  dh->q = q;
+  dh->g = g;
+  return 1;
+}
+#endif
 
 // this code was generated using the command:
 // "openssl dhparam -C -2 2048"
 static DH *get_dh2048(void)
 {
-  static const unsigned char dh2048_p[]={
+  static const unsigned char dhp_2048[]={
     0xAE,0xF7,0xE9,0x66,0x26,0x7A,0xAC,0x0A,0x6F,0x1E,0xCD,0x81,
     0xBD,0x0A,0x10,0x7E,0xFA,0x2C,0xF5,0x2D,0x98,0xD4,0xE7,0xD9,
     0xE4,0x04,0x8B,0x06,0x85,0xF2,0x0B,0xA3,0x90,0x15,0x56,0x0C,
@@ -385,54 +396,76 @@ static DH *get_dh2048(void)
     0xA4,0xED,0xFD,0x49,0x0B,0xE3,0x4A,0xF6,0x28,0xB3,0x98,0xB0,
     0x23,0x1C,0x09,0x33,
   };
-  static const unsigned char dh2048_g[]={
+  static const unsigned char dhg_2048[]={
     0x02,
   };
-  DH *dh;
+  DH *dh = DH_new();
+  BIGNUM *dhp_bn, *dhg_bn;
 
-  if ((dh=DH_new()) == NULL) return(NULL);
-  dh->p=BN_bin2bn(dh2048_p,sizeof(dh2048_p),NULL);
-  dh->g=BN_bin2bn(dh2048_g,sizeof(dh2048_g),NULL);
-  if ((dh->p == NULL) || (dh->g == NULL))
-    { DH_free(dh); return(NULL); }
-  return(dh);
+  if (dh == NULL)
+    return NULL;
+  dhp_bn = BN_bin2bn(dhp_2048, sizeof (dhp_2048), NULL);
+  dhg_bn = BN_bin2bn(dhg_2048, sizeof (dhg_2048), NULL);
+  if (dhp_bn == NULL || dhg_bn == NULL
+      || !DH_set0_pqg(dh, dhp_bn, NULL, dhg_bn)) {
+    DH_free(dh);
+    BN_free(dhp_bn);
+    BN_free(dhg_bn);
+    return NULL;
+  }
+  return dh;
 }
 
 typedef struct {
-  const char *id;
+  char *id;
   SSL_SESSION *session;
-} ssl_cache_visit_data;
+} ssl_cache_data;
 
-static void SSL_SESSION_cache_visitor(SSL_SESSION *session, ssl_cache_visit_data *data)
-{
-  const char *cached_id = (const char*)SSL_SESSION_get_ex_data(session, ssl_session_ex_data_index);
-  if (!cached_id) return;
-  
-  if ( strcmp(cached_id, data->id)==0 ) {
-    data->session = session;
+#define SSL_CACHE_SIZE 4
+static int ssl_cache_ptr = 0;
+static ssl_cache_data ssl_cache[SSL_CACHE_SIZE];
+
+static void ssn_init(void) {
+  ssl_cache_data s = {NULL, NULL};
+  for (int i=0; i<SSL_CACHE_SIZE; i++) {
+    ssl_cache[i] = s;
   }
 }
 
-static void SSL_SESSION_visit_caster(void *s, void * d) {
-    SSL_SESSION_cache_visitor((SSL_SESSION*) s, (ssl_cache_visit_data*) d);
+static void ssn_restore(pn_transport_t *transport, pni_ssl_t *ssl) {
+  if (!ssl->session_id) return;
+  for (int i = ssl_cache_ptr;;) {
+    i = (i==0) ? SSL_CACHE_SIZE-1 : i-1;
+    if (ssl_cache[i].id == NULL) return;
+    if (strcmp(ssl_cache[i].id, ssl->session_id) == 0) {
+      ssl_log( transport, "Restoring previous session id=%s", ssl->session_id );
+      int rc = SSL_set_session( ssl->ssl, ssl_cache[i].session );
+      if (rc != 1) {
+        ssl_log( transport, "Session restore failed, id=%s", ssl->session_id );
+      }
+      return;
+    }
+    if (i == ssl_cache_ptr) return;
+  }
 }
 
-static SSL_SESSION *ssn_cache_find( pn_ssl_domain_t *domain, const char *id )
-{
-  if (!id) return NULL;
+static void ssn_save(pn_transport_t *transport, pni_ssl_t *ssl) {
+  if (ssl->session_id) {
+    // Attach the session id to the session before we close the connection
+    // So that if we find it in the cache later we can figure out the session id
+    SSL_SESSION *session = SSL_get1_session( ssl->ssl );
+    if (session) {
+      ssl_log(transport, "Saving SSL session as %s", ssl->session_id );
+      // If we're overwriting a value, need to free it
+      free(ssl_cache[ssl_cache_ptr].id);
+      if (ssl_cache[ssl_cache_ptr].session) SSL_SESSION_free(ssl_cache[ssl_cache_ptr].session);
 
-  ssl_cache_visit_data visitor = {id, NULL};
-  lh_SSL_SESSION_doall_arg(SSL_CTX_sessions(domain->ctx), &SSL_SESSION_visit_caster, ssl_cache_visit_data, &visitor);
-  return visitor.session;
-}
-
-// Set up/tear down ssl session ex data
-int ssl_session_ex_data_init(void *parent, void *ptr, CRYPTO_EX_DATA *ad, int idx, long argl, void *argp) {
-  return CRYPTO_set_ex_data(ad, idx, NULL);
-}
-
-void ssl_session_ex_data_fini(void *parent, void *ptr, CRYPTO_EX_DATA *ad, int idx, long argl, void *argp) {
-  free(CRYPTO_get_ex_data(ad, idx));
+      char *id = pn_strdup( ssl->session_id );
+      ssl_cache_data s = {id, session};
+      ssl_cache[ssl_cache_ptr++] = s;
+      if (ssl_cache_ptr==SSL_CACHE_SIZE) ssl_cache_ptr = 0;
+    }
+  }
 }
 
 /** Public API - visible to application code */
@@ -451,8 +484,7 @@ pn_ssl_domain_t *pn_ssl_domain( pn_ssl_mode_t mode )
     OpenSSL_add_all_algorithms();
     ssl_ex_data_index = SSL_get_ex_new_index( 0, (void *) "org.apache.qpid.proton.ssl",
                                               NULL, NULL, NULL);
-    ssl_session_ex_data_index = SSL_SESSION_get_ex_new_index(0, (void *)"ssl session data",
-                                                             &ssl_session_ex_data_init, NULL, &ssl_session_ex_data_fini);
+    ssn_init();
   }
 
   pn_ssl_domain_t *domain = (pn_ssl_domain_t *) calloc(1, sizeof(pn_ssl_domain_t));
@@ -494,6 +526,9 @@ pn_ssl_domain_t *pn_ssl_domain( pn_ssl_mode_t mode )
 #ifdef SSL_OP_NO_COMPRESSION
   // Mitigate the CRIME vulnerability
   SSL_CTX_set_options(domain->ctx, SSL_OP_NO_COMPRESSION);
+#endif
+#if OPENSSL_VERSION_NUMBER >= 0x10100000
+    domain->default_seclevel = SSL_CTX_get_security_level(domain->ctx);
 #endif
 
   // by default, allow anonymous ciphers so certificates are not required 'out of the box'
@@ -618,6 +653,10 @@ int pn_ssl_domain_set_peer_authentication(pn_ssl_domain_t *domain,
   case PN_SSL_VERIFY_PEER:
   case PN_SSL_VERIFY_PEER_NAME:
 
+#if OPENSSL_VERSION_NUMBER >= 0x10100000
+    SSL_CTX_set_security_level(domain->ctx, domain->default_seclevel);
+#endif
+
     if (!domain->has_ca_db) {
       pn_transport_logf(NULL, "Error: cannot verify peer without a trusted CA configured.\n"
                  "       Use pn_ssl_domain_set_trusted_ca_db()");
@@ -656,6 +695,10 @@ int pn_ssl_domain_set_peer_authentication(pn_ssl_domain_t *domain,
     break;
 
   case PN_SSL_ANONYMOUS_PEER:   // hippie free love mode... :)
+#if OPENSSL_VERSION_NUMBER >= 0x10100000
+    // Must use lowest OpenSSL security level to enable anonymous ciphers.
+    SSL_CTX_set_security_level(domain->ctx, 0);
+#endif
     SSL_CTX_set_verify( domain->ctx, SSL_VERIFY_NONE, NULL );
     break;
 
@@ -840,16 +883,7 @@ static int start_ssl_shutdown(pn_transport_t *transport)
   pni_ssl_t *ssl = transport->ssl;
   if (!ssl->ssl_shutdown) {
     ssl_log(transport, "Shutting down SSL connection...");
-    if (ssl->session_id) {
-      // Attach the session id to the session before we close the connection
-      // So that if we find it in the cache later we can figure out the session id
-      char *id = pn_strdup( ssl->session_id ); 
-      SSL_SESSION *session = SSL_get_session( ssl->ssl );
-      if (session) {
-        ssl_log(transport, "Saving SSL session as %s", ssl->session_id );
-        SSL_SESSION_set_ex_data(session, ssl_session_ex_data_index, id);
-      }
-    }
+    ssn_save(transport, ssl);
     ssl->ssl_shutdown = true;
     BIO_ssl_shutdown( ssl->bio_ssl );
   }
@@ -1150,16 +1184,7 @@ static int init_ssl_socket(pn_transport_t* transport, pni_ssl_t *ssl)
 #endif
 
   // restore session, if available
-  if (ssl->session_id) {
-    SSL_SESSION *ssn = ssn_cache_find( ssl->domain, ssl->session_id );
-    if (ssn) {
-      ssl_log( transport, "Restoring previous session id=%s", ssl->session_id );
-      int rc = SSL_set_session( ssl->ssl, ssn );
-      if (rc != 1) {
-        ssl_log( transport, "Session restore failed, id=%s", ssl->session_id );
-      }
-    }
-  }
+  ssn_restore(transport, ssl);
 
   // now layer a BIO over the SSL socket
   ssl->bio_ssl = BIO_new(BIO_f_ssl());
@@ -1330,8 +1355,8 @@ int pn_ssl_get_cert_fingerprint(pn_ssl_t *ssl0, char *fingerprint, size_t finger
     const EVP_MD  *digest = EVP_get_digestbyname(digest_name);
 
     pni_ssl_t *ssl = get_ssl_internal(ssl0);
-
     X509 *cert = get_peer_certificate(ssl);
+    if (!cert) return PN_ERR;
 
     if(cert) {
         unsigned int len;
@@ -1392,6 +1417,7 @@ const char* pn_ssl_get_remote_subject_subfield(pn_ssl_t *ssl0, pn_ssl_cert_subje
 
     pni_ssl_t *ssl = get_ssl_internal(ssl0);
     X509 *cert = get_peer_certificate(ssl);
+    if (!cert) return NULL;
 
     X509_NAME *subject_name = X509_get_subject_name(cert);
 
