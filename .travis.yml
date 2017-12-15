@@ -23,6 +23,11 @@ compiler:
 - gcc
 - clang
 
+# safelist
+branches:
+  only:
+  - PROTON-0
+
 matrix:
   include:
   - os: linux
