@@ -760,12 +760,20 @@ static const pn_class_t pconnection_class = PN_CLASS(pconnection);
 
 static void pconnection_tick(pconnection_t *pc);
 
-static const char *pconnection_setup(pconnection_t *pc, pn_proactor_t *p, pn_connection_t *c, bool server, const char *addr)
+static const char *pconnection_setup(pconnection_t *pc, pn_proactor_t *p, pn_connection_t *c, pn_transport_t *t, bool server, const char *addr)
 {
+  memset(pc, 0, sizeof(*pc));
+
+  if (pn_connection_driver_init(&pc->driver, c, t) != 0) {
+    free(pc);
+    return "pn_connection_driver_init failure";
+  }
+
   lock(&p->bind_mutex);
-  pn_record_t *r = pn_connection_attachments(c);
+  pn_record_t *r = pn_connection_attachments(pc->driver.connection);
   if (pn_record_get(r, PN_PROACTOR)) {
     unlock(&p->bind_mutex);
+    pn_connection_driver_destroy(&pc->driver);
     free(pc);
     return "pn_connection_t already in use";
   }
@@ -774,10 +782,6 @@ static const char *pconnection_setup(pconnection_t *pc, pn_proactor_t *p, pn_con
   pc->bound = true;
   unlock(&p->bind_mutex);
 
-  if (pn_connection_driver_init(&pc->driver, c, NULL) != 0) {
-    free(pc);
-    return "pn_connection_driver_init failure";
-  }
   pcontext_init(&pc->context, PCONNECTION, p, pc);
   psocket_init(&pc->psocket, p, NULL, addr);
   pc->new_events = 0;
@@ -1092,6 +1096,7 @@ static pn_event_batch_t *pconnection_process(pconnection_t *pc, uint32_t events,
   }
 
   if (pc->new_events) {
+    pc->current_arm = 0;
     if (!pc->context.closing) {
       if ((pc->new_events & (EPOLLHUP | EPOLLERR)) && !pconnection_rclosed(pc) && !pconnection_wclosed(pc))
         pconnection_maybe_connect_lh(pc);
@@ -1102,7 +1107,6 @@ static pn_event_batch_t *pconnection_process(pconnection_t *pc, uint32_t events,
       if (pc->new_events & EPOLLIN)
         pc->read_blocked = false;
     }
-    pc->current_arm = 0;
     pc->new_events = 0;
   }
 
@@ -1218,24 +1222,29 @@ void pconnection_connected_lh(pconnection_t *pc) {
       pc->addrinfo = NULL;
     }
     pc->ai = NULL;
+    socklen_t len = sizeof(pc->remote.ss);
+    (void)getpeername(pc->psocket.sockfd, (struct sockaddr*)&pc->remote.ss, &len);
   }
 }
 
+/* multi-address connections may call pconnection_start multiple times with diffferent FDs  */
 static void pconnection_start(pconnection_t *pc) {
   int efd = pc->psocket.proactor->epollfd;
+  /* Start timer, a no-op if the timer has already started. */
   start_polling(&pc->timer.epoll_io, efd);  // TODO: check for error
 
-  int fd = pc->psocket.sockfd;
+  /* Get the local socket name now, get the peer name in pconnection_connected */
   socklen_t len = sizeof(pc->local.ss);
-  (void)getsockname(fd, (struct sockaddr*)&pc->local.ss, &len);
-  len = sizeof(pc->remote.ss);
-  (void)getpeername(fd, (struct sockaddr*)&pc->remote.ss, &len); /* Ignore error, leave ss null */
+  (void)getsockname(pc->psocket.sockfd, (struct sockaddr*)&pc->local.ss, &len);
 
-  start_polling(&pc->timer.epoll_io, efd);  // TODO: check for error
   epoll_extended_t *ee = &pc->psocket.epoll_io;
+  if (ee->polling) {     /* This is not the first attempt, stop polling and close the old FD */
+    int fd = ee->fd;     /* Save fd, it will be set to -1 by stop_polling */
+    stop_polling(ee, efd);
+    pclosefd(pc->psocket.proactor, fd);
+  }
   ee->fd = pc->psocket.sockfd;
-  ee->wanted = EPOLLIN | EPOLLOUT;
-  ee->polling = false;
+  pc->current_arm = ee->wanted = EPOLLIN | EPOLLOUT;
   start_polling(ee, efd);  // TODO: check for error
 }
 
@@ -1292,10 +1301,10 @@ static bool wake_if_inactive(pn_proactor_t *p) {
   return false;
 }
 
-void pn_proactor_connect(pn_proactor_t *p, pn_connection_t *c, const char *addr) {
+void pn_proactor_connect2(pn_proactor_t *p, pn_connection_t *c, pn_transport_t *t, const char *addr) {
   pconnection_t *pc = (pconnection_t*) pn_class_new(&pconnection_class, sizeof(pconnection_t));
   assert(pc); // TODO: memory safety
-  const char *err = pconnection_setup(pc, p, c, false, addr);
+  const char *err = pconnection_setup(pc, p, c, t, false, addr);
   if (err) {    /* TODO aconway 2017-09-13: errors must be reported as events */
     pn_logf("pn_proactor_connect failure: %s", err);
     return;
@@ -1535,7 +1544,7 @@ static void listener_begin_close(pn_listener_t* l) {
         unlock(&l->rearm_mutex);
       }
     }
-    /* Close all sockets waiting for a pn_listener_accept() */
+    /* Close all sockets waiting for a pn_listener_accept2() */
     if (l->unclaimed) l->pending_count++;
     acceptor_t *a = listener_list_next(&l->pending_acceptors);
     while (a) {
@@ -1695,10 +1704,10 @@ pn_record_t *pn_listener_attachments(pn_listener_t *l) {
   return l->attachments;
 }
 
-void pn_listener_accept(pn_listener_t *l, pn_connection_t *c) {
+void pn_listener_accept2(pn_listener_t *l, pn_connection_t *c, pn_transport_t *t) {
   pconnection_t *pc = (pconnection_t*) pn_class_new(&pconnection_class, sizeof(pconnection_t));
   assert(pc); // TODO: memory safety
-  const char *err = pconnection_setup(pc, pn_listener_proactor(l), c, true, "");
+  const char *err = pconnection_setup(pc, pn_listener_proactor(l), c, t, true, "");
   if (err) {
     pn_logf("pn_listener_accept failure: %s", err);
     return;

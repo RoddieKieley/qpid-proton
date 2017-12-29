@@ -75,11 +75,25 @@ class Broker < Qpid::Proton::MessagingHandler
     super()
     @url = url
     @queues = {}
+    begin          # Optional SSL setup, ignore if we don't find cert files etc.
+      @ssl_domain = Qpid::Proton::SSLDomain.new(Qpid::Proton::SSLDomain::MODE_SERVER)
+      cert_passsword = "tserverpw"
+      if Gem.win_platform?       # Use P12 certs for windows schannel
+        @ssl_domain.credentials("ssl_certs/tserver-certificate.p12", "", cert_passsword)
+      else
+        @ssl_domain.credentials("ssl_certs/tserver-certificate.pem", "ssl_certs/tserver-private-key.pem", cert_passsword)
+      end
+      @ssl_domain.allow_unsecured_client # SSL is optional, this is not secure.
+    rescue
+      @ssl_domain = nil # Don't worry if we can't set up SSL.
+    end
   end
 
   def on_container_start(container)
-    @listener = container.listen(@url)
-    STDOUT.puts "Listening on #{@url}"; STDOUT.flush
+    # Options for incoming connections, provide SSL configuration if we have it.
+    opts = {:ssl_domain => @ssl_domain} if @ssl_domain
+    @listener = container.listen(@url, Qpid::Proton::Listener::Handler.new(opts))
+    STDOUT.puts "Listening on #{@url.inspect}"; STDOUT.flush
   end
 
   def queue(address)
@@ -127,11 +141,7 @@ class Broker < Qpid::Proton::MessagingHandler
   end
 
   def remove_stale_consumers(connection)
-    l = connection.link_head(Qpid::Proton::Endpoint::REMOTE_ACTIVE)
-    while !l.nil?
-      self.unsubscribe(l) if l.sender?
-      l = l.next(Qpid::Proton::Endpoint::REMOTE_ACTIVE)
-    end
+    connection.each_sender { |s| unsubscribe(s) }
   end
 
   def on_sendable(sender)

@@ -45,9 +45,12 @@ module Qpid::Proton
 
       def initialize(io, handler, container)
         super
+        @closing = @closed = nil
         env = ENV['PN_TRACE_EVT']
         if env && ["true", "1", "yes", "on"].include?(env.downcase)
           @log_prefix = "[0x#{object_id.to_s(16)}](PN_LISTENER_"
+        else
+          @log_prefix = nil
         end
         dispatch(:on_open);
       end
@@ -110,7 +113,8 @@ module Qpid::Proton
         @handler = args[0] unless @id
       else raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..2"
       end
-      @adapter = Handler::Adapter.adapt(@handler)
+      # Use an empty messaging adapter to give default behaviour if there's no global handler.
+      @adapter = Handler::Adapter.adapt(@handler) || Handler::MessagingAdapter.new(nil)
       @id = (@id || SecureRandom.uuid).freeze
 
       # Implementation note:
@@ -168,12 +172,12 @@ module Qpid::Proton
     def connect(url, opts=nil)
       not_stopped
       url = Qpid::Proton::uri url
+      opts ||= {}
       if url.user ||  url.password
-        opts ||= {}
         opts[:user] ||= url.user
         opts[:password] ||= url.password
       end
-      # TODO aconway 2017-10-26: Use SSL for amqps URLs
+      opts[:ssl_domain] ||= SSLDomain.new(SSLDomain::MODE_CLIENT) if url.scheme == "amqps"
       connect_io(TCPSocket.new(url.host, url.port), opts)
     end
 

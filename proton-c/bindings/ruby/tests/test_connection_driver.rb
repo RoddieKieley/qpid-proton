@@ -26,6 +26,7 @@ class RawDriverTest < Minitest::Test
   # Raw handler to record all on_xxx calls
   class RecordingHandler
     def initialize() @calls =[]; end
+    def proton_adapter_class() nil; end # Raw adapter
     attr_reader :calls
 
     def method_missing(name, *args) respond_to_missing?(name) ? @calls << name : super; end
@@ -35,6 +36,7 @@ class RawDriverTest < Minitest::Test
 
   def test_send_recv
     send_class = Class.new do
+      def proton_adapter_class() nil; end # Raw adapter
       attr_reader :outcome
       def on_link_flow(event) event.sender.send Message.new("foo"); end
       def on_delivery(event)
@@ -44,6 +46,7 @@ class RawDriverTest < Minitest::Test
     end
 
     recv_class = Class.new do
+      def proton_adapter_class() nil; end # Raw adapter
       attr_reader :message
       def on_connection_remote_open(event) event.context.open; end
       def on_session_remote_open(event) event.context.open; end
@@ -85,5 +88,46 @@ class RawDriverTest < Minitest::Test
     assert_equal [[],[]], d.collect { |x| x.handler.calls }
     d.run(start + secs*2)   # After 2x timeout, connections should close
     assert_equal [[:on_transport_error, :on_transport_tail_closed, :on_transport_head_closed, :on_transport_closed], [:on_connection_remote_close, :on_transport_tail_closed, :on_transport_head_closed, :on_transport_closed]], d.collect { |x| x.handler.calls }
+  end
+
+  # Test each_session/each_link methods both with a block and returning Enumerator
+  def test_enumerators
+    connection = Connection.new()
+    (3.times.collect { connection.open_session }).each { |s|
+      s.open_sender; s.open_receiver
+    }
+
+    assert_equal 3, connection.each_session.to_a.size
+    assert_equal 6, connection.each_link.to_a.size
+
+    # Build Session => Set<Links> map using connection link enumerator
+    map1 = {}
+    connection.each_link { |l| map1[l.session] ||= Set.new; map1[l.session] << l }
+    assert_equal 3, map1.size
+    map1.each do |session,links|
+      assert_equal 2, links.size
+      links.each { |l| assert_equal session, l.session }
+    end
+
+    # Build Session => Set<Links> map using connection and session blocks
+    map2 = {}
+    connection.each_session do |session|
+      map2[session] = Set.new
+      session.each_link { |l| map2[session] << l }
+    end
+    assert_equal map1, map2
+
+    # Build Session => Set<Links> map using connection session and session enumerators
+    map3 = Hash[connection.each_session.collect { |s| [s, Set.new(s.each_link)] }]
+    assert_equal map1, map3
+
+    assert_equal [true, true, true], connection.each_sender.collect { |l| l.is_a? Sender }
+    assert_equal [true, true, true], connection.each_receiver.collect { |l| l.is_a? Receiver }
+    connection.each_session { |session|
+      assert_equal [true], session.each_sender.collect { |l| l.is_a? Sender }
+      assert_equal [true], session.each_receiver.collect { |l| l.is_a? Receiver }
+    }
+
+
   end
 end

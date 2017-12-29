@@ -66,8 +66,6 @@ module Qpid::Proton
     # @private
     include Util::ErrorHandler
 
-    can_raise_error :peer_hostname=, :error_class => SSLError
-
     # Returns whether SSL is supported.
     #
     # @return [Boolean] True if SSL support is available.
@@ -130,8 +128,7 @@ module Qpid::Proton
     #
     def protocol_name
       rc, name = Cproton.pn_ssl_get_protocol_name(@impl, 128)
-      retur name if rc
-      nil
+      name if rc
     end
 
     # Checks whether or not the state has resumed.
@@ -155,7 +152,5 @@ module Qpid::Proton
       raise SSLError.new if error < 0
       return name
     end
-
   end
-
 end

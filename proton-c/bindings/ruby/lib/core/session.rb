@@ -56,13 +56,7 @@ module Qpid::Proton
     #
     proton_caller :incoming_bytes
 
-    # @!method open
-    # Opens the session.
-    #
-    # Once this operaton has completed, the state flag is updated.
-    #
-    # @see LOCAL_ACTIVE
-    #
+    # Open the session
     proton_caller :open
 
     # @!attribute [r] state
@@ -90,17 +84,9 @@ module Qpid::Proton
       Cproton.pn_session_close(@impl)
     end
 
-    # Retrieves the next session from a given connection that matches the
-    # specified state mask.
-    #
-    # When uses with Connection#session_head an application can access all of
-    # the session son the connection that match the given state.
-    #
-    # @param state_mask [Integer] The state mask to match.
-    #
-    # @return [Session, nil] The next session if one matches, or nil.
-    #
+    # @deprecated use {Connection#each_session}
     def next(state_mask)
+      deprecated __method__, "Connection#each_session"
       Session.wrap(Cproton.pn_session_next(@impl, state_mask))
     end
 
@@ -124,31 +110,43 @@ module Qpid::Proton
       Receiver.new(Cproton.pn_receiver(@impl, name))
     end
 
-    # TODO aconway 2016-01-04: doc options or target param, move option handling to Link.
-    def open_receiver(opts=nil)
-      opts = { :source => opts } if opts.is_a? String
-      opts ||= {}
-      receiver = Receiver.new Cproton.pn_receiver(@impl, opts[:name] || connection.link_name)
-      receiver.source.address ||= opts[:source]
-      receiver.target.address ||= opts[:target]
-      receiver.source.dynamic = true if opts[:dynamic]
-      receiver.handler = opts[:handler] if !opts[:handler].nil?
-      receiver.open
-      return receiver
+    # Create and open a {Receiver} link, see {Receiver#open}
+    # @param opts [Hash] receiver options, see {Receiver#open}
+    # @return [Receiver]
+    def open_receiver(opts=nil) 
+      name = opts[:name] rescue connection.link_name
+      Receiver.new(Cproton.pn_receiver(@impl, name)).open(opts)
     end
 
-    # TODO aconway 2016-01-04: doc opts or target param, connection and containers
+    # Create and open a {Sender} link, see {#open}
+    # @param opts [Hash] sender options, see {Sender#open}
+    # @return [Sender]
     def open_sender(opts=nil)
-      opts = { :target => opts } if opts.is_a? String
-      opts ||= {}
-      sender = Sender.new Cproton.pn_sender(@impl, opts[:name] || connection.link_name)
-      sender.target.address ||= opts[:target]
-      sender.source.address ||= opts[:source]
-      sender.target.dynamic = true if opts[:dynamic]
-      sender.handler = opts[:handler] if !opts[:handler].nil?
-      sender.open
-      return sender
+      name = opts[:name] rescue connection.link_name
+      Sender.new(Cproton.pn_sender(@impl, name)).open(opts)
     end
+
+    # Get the links on this Session.
+    # @overload each_link
+    #   @yieldparam l [Link] pass each link to block
+    # @overload each_link
+    #   @return [Enumerator] enumerator over links
+    def each_link
+      return enum_for(:each_link) unless block_given?
+      l = Cproton.pn_link_head(Cproton.pn_session_connection(@impl), 0);
+      while l
+        link = Link.wrap(l)
+        yield link if link.session == self
+        l = Cproton.pn_link_next(l, 0)
+      end
+      self
+    end
+
+    # Get the {Sender} links - see {#each_link}
+    def each_sender() each_link.select { |l| l.sender? }; end
+
+    # Get the {Receiver} links - see {#each_link}
+    def each_receiver() each_link.select { |l| l.receiver? }; end
 
     private
 
