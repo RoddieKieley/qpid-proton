@@ -35,6 +35,10 @@ matrix:
     - QPID_PROTON_CMAKE_ARGS='-DCMAKE_BUILD_TYPE=Coverage'
     after_success:
     - bash <(curl -s https://codecov.io/bash)
+    install:
+    - pip install --user --upgrade pip
+    - pip install --user coverage tox
+    - gem install minitest
 
   - os: osx
     osx_image: xcode7.3
@@ -44,6 +48,9 @@ matrix:
     - brew update
     - brew upgrade python openssl
     - brew install libuv swig
+    install:
+    - pip2 install --user --upgrade pip2
+    - pip2 install --user coverage tox
 
   - os: osx
     osx_image: xcode9
@@ -53,6 +60,9 @@ matrix:
     - brew update
     - brew upgrade python openssl
     - brew install libuv swig
+    install:
+    - pip2 install --user --upgrade pip2
+    - pip2 install --user coverage tox
 
 # Note addons is apt specific at the moment and will not be applied for osx.
 # See before_install brew commands below
@@ -74,8 +84,6 @@ addons:
     - lcov
 
 install:
-- pip install --user --upgrade pip
-- pip install --user coverage tox
 - gem install minitest
 
 before_script:
