@@ -48,9 +48,6 @@ matrix:
     - brew update
     - brew upgrade python openssl
     - brew install libuv swig
-    install:
-    - pip2 install --user --upgrade pip2
-    - pip2 install --user coverage tox
 
   - os: osx
     osx_image: xcode9
@@ -60,9 +57,6 @@ matrix:
     - brew update
     - brew upgrade python openssl
     - brew install libuv swig
-    install:
-    - pip2 install --user --upgrade pip2
-    - pip2 install --user coverage tox
 
 # Note addons is apt specific at the moment and will not be applied for osx.
 # See before_install brew commands below
