@@ -27,6 +27,7 @@
 #include "proton/transport.h"
 
 #include <sasl/sasl.h>
+#include <sasl/saslplug.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -218,7 +219,8 @@ static void pni_cyrus_client_once(void) {
     }
   }
   if (result==SASL_OK) {
-    result = sasl_client_init(NULL);
+    /*result = sasl_client_init(NULL);*/
+      result = sasl_client_init(pni_user_password_callbacks);
   }
   pni_cyrus_client_started = true;
   pni_cyrus_client_init_rc = result;
@@ -275,7 +277,7 @@ bool cyrus_sasl_init_client(pn_transport_t* transport) {
                              &cyrus_conn);
     if (result!=SASL_OK) break;
     pnx_sasl_set_context(transport, cyrus_conn);
-
+      
     sasl_security_properties_t secprops = {0};
     secprops.security_flags =
       ( pnx_sasl_get_allow_insecure_mechs(transport) ? 0 : SASL_SEC_NOPLAINTEXT ) |
@@ -308,8 +310,14 @@ static int pni_wrap_client_start(pn_transport_t *transport, const char *mechs, c
     unsigned outlen;
 
     sasl_conn_t *cyrus_conn = (sasl_conn_t*)pnx_sasl_get_context(transport);
+	unsigned int plen = 0;
+	int pcount = 0;
+	char szResult[1024] = {0};
+  int count = 0;
+  const char *pszresult = NULL;
     do {
-
+		//result = sasl_listmech(cyrus_conn, NULL, NULL, NULL, NULL, &szResult, &plen, &pcount);
+  		result = sasl_listmech(cyrus_conn, NULL, "", " ", "", &pszresult, NULL, &count);
         result = sasl_client_start(cyrus_conn,
                                    mechs,
                                    &client_interact,

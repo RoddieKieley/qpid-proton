@@ -20,6 +20,7 @@
 include(CheckLibraryExists)
 include(CheckSymbolExists)
 include(CheckPythonModule)
+#include(FindCyrusSASL)
 
 include(versions.cmake)
 
@@ -36,14 +37,25 @@ find_package(SWIG)
 mark_as_advanced(SWIG_DIR SWIG_EXECUTABLE SWIG_VERSION)
 
 # See if Cyrus SASL is available
-find_library(CYRUS_SASL_LIBRARY sasl2)
-find_path(CYRUS_SASL_INCLUDE_DIR sasl/sasl.h PATH_SUFFIXES include)
-find_package_handle_standard_args(CyrusSASL DEFAULT_MSG CYRUS_SASL_LIBRARY CYRUS_SASL_INCLUDE_DIR)
-mark_as_advanced(CYRUS_SASL_LIBRARY CYRUS_SASL_INCLUDE_DIR)
+#find_library(CYRUS_SASL_LIBRARY sasl2)
+#find_path(CYRUS_SASL_INCLUDE_DIR sasl/sasl.h PATH_SUFFIXES include)
+#find_package_handle_standard_args(CyrusSASL DEFAULT_MSG CYRUS_SASL_LIBRARY CYRUS_SASL_INCLUDE_DIR)
+#mark_as_advanced(CYRUS_SASL_LIBRARY CYRUS_SASL_INCLUDE_DIR)
 
 # Find saslpasswd2 executable to generate test config
-find_program(SASLPASSWD_EXE saslpasswd2 DOC "Program used to make SASL user db for testing")
-mark_as_advanced(SASLPASSWD_EXE)
+#find_program(SASLPASSWD_EXE saslpasswd2 DOC "Program used to make SASL user db for testing")
+#mark_as_advanced(SASLPASSWD_EXE)
+
+#set(sasl_providers cyrus none)
+#if (CYRUSSASL_FOUND)
+  #set (sasl_impl cyrus)
+#else ()
+  #set (sasl_impl none)
+#endif ()
+#set(SASL_IMPL ${sasl_impl} CACHE STRING "Library to use for SASL support. Valid values: ${sasl_providers}")
+
+#find_package(CyrusSASL)
+
 
 if(WIN32 AND NOT CYGWIN)
   # linking against Windows native libraries, including mingw
@@ -61,14 +73,6 @@ else(PN_WINAPI)
   set(ssl_providers "'none','openssl'")
 endif(PN_WINAPI)
 set(SSL_IMPL ${ssl_impl} CACHE STRING "Library to use for SSL/TLS support. Valid values: ${ssl_providers}")
-
-set(sasl_providers cyrus none)
-if (CYRUSSASL_FOUND AND Threads_FOUND)
-  set (sasl_impl cyrus)
-else ()
-  set (sasl_impl none)
-endif ()
-set(SASL_IMPL ${sasl_impl} CACHE STRING "Library to use for SASL support. Valid values: ${sasl_providers}")
 
 configure_file (
   "${CMAKE_CURRENT_SOURCE_DIR}/include/proton/version.h.in"

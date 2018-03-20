@@ -163,6 +163,10 @@ endforeach()
 set (PROTON_SHARE ${SHARE_INSTALL_DIR}/proton-${PN_VERSION})
 # End of variables used during install
 
+# Check for Cyrus SASL here so examples under examples can use it
+include(FindCyrusSASL)
+find_package(CyrusSASL)
+
 # Can't do valgrind and coverage at athe same time - coverage takes precedence
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
   message(STATUS "Building for coverage analysis; no run-time error detection")

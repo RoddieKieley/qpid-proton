@@ -25,9 +25,43 @@ find_package(Threads REQUIRED)
 include_directories(${Proton_INCLUDE_DIRS})
 add_definitions(${Proton_DEFINITIONS})
 
-foreach (name broker send receive direct send-abort send-ssl)
+add_definitions(${C_EXAMPLE_FLAGS})
+
+macro(add_c_test name)
+  if(WIN32)
+    set(test_path "$<TARGET_FILE_DIR:c-broker>;$<TARGET_FILE_DIR:qpid-proton>")
+  else(WIN32)
+    set(test_path "$<TARGET_FILE_DIR:c-broker>:$ENV{PATH}")
+  endif(WIN32)
+  set(run_env ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/proton-c/env.py ${EXAMPLE_ENV})
+  add_test(NAME ${name} COMMAND ${run_env} "PATH=${test_path}" ${VALGRIND_ENV} -- ${ARGN})
+endmacro()
+
+
+# Add a test with the correct environment to find test executables and valgrind.
+if(WIN32)
+  set(test_path "$<TARGET_FILE_DIR:broker>;$<TARGET_FILE_DIR:qpid-proton>")
+else()
+  set(test_path "${CMAKE_CURRENT_BINARY_DIR}:$ENV{PATH}")
+endif()
+
+# Link in SASL if present
+#if (SASL_IMPL STREQUAL cyrus)
+  #message(STATUS "SASL_IMPL is cyrus")
+  ##set(pn_sasl_impl ../../proton-c/src/sasl/sasl.c ../../proton-c/src/sasl/default_sasl.c ../../proton-c/src/sasl/cyrus_sasl.c)
+  #include_directories (${CYRUS_SASL_INCLUDE_DIR})
+  #set(SASL_LIB ${CYRUS_SASL_LIBRARY} -lpthread)
+  #message(STATUS "SASL_LIB is ${SASL_LIB}")
+#elseif (SASL_IMPL STREQUAL none)
+  #message(STATUS "SASL_IMPL is none")
+  ##set(pn_sasl_impl ../../proton-c/src/sasl/sasl.c ../../proton-c/src/sasl/default_sasl.c ../../proton-c/src/sasl/cyrus_stub.c)
+#endif ()
+
+#foreach (name broker send receive direct send-abort)
+foreach (name broker send-sasl)
   add_executable(c-${name} ${name}.c)
   target_link_libraries(c-${name} ${Proton_Proactor_LIBRARIES} ${Proton_Core_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+  #target_link_libraries(c-${name} ${Proton_Proactor_LIBRARIES} ${Proton_Core_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${SASL_LIB})
   set_target_properties(c-${name} PROPERTIES
     OUTPUT_NAME ${name})
 endforeach()
