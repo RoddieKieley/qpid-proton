@@ -310,14 +310,10 @@ static int pni_wrap_client_start(pn_transport_t *transport, const char *mechs, c
     unsigned outlen;
 
     sasl_conn_t *cyrus_conn = (sasl_conn_t*)pnx_sasl_get_context(transport);
-	unsigned int plen = 0;
-	int pcount = 0;
-	char szResult[1024] = {0};
-  int count = 0;
-  const char *pszresult = NULL;
+    //int count = 0;
+    //const char *pszresult = NULL;
     do {
-		//result = sasl_listmech(cyrus_conn, NULL, NULL, NULL, NULL, &szResult, &plen, &pcount);
-  		result = sasl_listmech(cyrus_conn, NULL, "", " ", "", &pszresult, NULL, &count);
+  		//result = sasl_listmech(cyrus_conn, NULL, "", " ", "", &pszresult, NULL, &count);
         result = sasl_client_start(cyrus_conn,
                                    mechs,
                                    &client_interact,

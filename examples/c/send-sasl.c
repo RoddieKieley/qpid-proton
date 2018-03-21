@@ -100,7 +100,6 @@ static bool handle(app_data_t* app, pn_event_t* event) {
 	 pn_sasl_t* pSasl = NULL;
      pn_session_t* s = NULL;
      pn_link_t* l = NULL;
-     bool bSaslExtended = false;
 
      switch (pn_event_type(event)) {
 
@@ -137,12 +136,10 @@ static bool handle(app_data_t* app, pn_event_t* event) {
 
 	case PN_TRANSPORT:
     	check_condition(event, pn_transport_condition(pn_event_transport(event)));
-		bSaslExtended = true;
 		break;
 
 	case PN_TRANSPORT_ERROR:
     	check_condition(event, pn_transport_condition(pn_event_transport(event)));
-		bSaslExtended = false;
 		break;
 
    case PN_SESSION_REMOTE_OPEN:
