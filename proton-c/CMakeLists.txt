@@ -197,14 +197,9 @@ endif (PN_WINAPI)
 
 # Try to keep any platform specific overrides together here:
 
-# Until we can decide what to do with PHP support, turn it off by default
-# (We can't build with recent versions of PHP)
-set (NOBUILD_PHP ON)
-
 # MacOS has a bunch of differences in build tools and process and so we have to turn some things
 # off if building there:
 if (APPLE)
-  set (NOBUILD_PHP ON)
   set (NOENABLE_WARNING_ERROR ON)
   set (NOENABLE_UNDEFINED_ERROR ON)
 endif (APPLE)
@@ -804,22 +799,4 @@ if (BUILD_PYTHON)
       endif ()
     endif (ENABLE_TOX_TEST)
   endif(NOT TOX_MODULE_FOUND)
-
-  set (perf_pythonpath "${py_pythonpath}" "${CMAKE_SOURCE_DIR}/examples/cpp")
-  to_native_path ("${perf_pythonpath}" perf_pythonpath)
-  add_custom_target(quick_perf_c ${env_py} -- "PATH=${py_path}" "PYTHONPATH=${perf_pythonpath}"
-                           ${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/tests/perf/quick_perf.py" "C")
-  add_dependencies(quick_perf_c reactor-send reactor-recv)
-
-  add_custom_target(quick_perf_py COMMAND ${env_py} --
-                    "PATH=${py_path}" "PYTHONPATH=${perf_pythonpath}"
-                    ${PYTHON_EXECUTABLE} "${CMAKE_SOURCE_DIR}/tests/perf/quick_perf.py" "PYTHON"
-                    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/tests/tools/apps/python")
-  add_dependencies(quick_perf_py reactor-recv _cproton)
-
 endif (BUILD_PYTHON)
-
-if (BUILD_JAVASCRIPT)
-  add_test (javascript-codec ${env_py} node ${pn_test_root}/javascript/codec.js)
-  add_test (javascript-message ${env_py} node ${pn_test_root}/javascript/message.js)
-endif (BUILD_JAVASCRIPT)
