@@ -127,13 +127,13 @@ static void pni_cyrus_interact(pn_transport_t *transport, sasl_interact_t *inter
     case SASL_CB_AUTHNAME: {
       const char *username = pnx_sasl_get_username(transport);
       i->result = username;
-      i->len = strlen(username);
+      i->len = username ? strlen(username) : 0;
       break;
     }
     case SASL_CB_PASS: {
       const char *password = pnx_sasl_get_password(transport);
       i->result = password;
-      i->len = strlen(password);
+      i->len = password ? strlen(password) : 0;
       break;
     }
     default:
