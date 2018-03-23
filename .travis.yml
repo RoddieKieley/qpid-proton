@@ -42,6 +42,8 @@ matrix:
     - brew update
     - brew upgrade cmake python openssl
     - brew install libuv swig
+    - brew tap KDE-mac homebrew-kde
+    - brew install cyrus-sasl
 
   - os: osx
     osx_image: xcode9
@@ -52,7 +54,7 @@ matrix:
     before_install:
     - brew update
     - brew upgrade cmake python openssl
-    - brew install libuv swig cyrus-sasl2
+    - brew install libuv swig
 
 # Note addons is apt specific at the moment and will not be applied for osx.
 # See before_install brew commands below
