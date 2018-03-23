@@ -42,7 +42,7 @@ matrix:
     - brew update
     - brew upgrade cmake python openssl
     - brew install libuv swig
-    - brew tap KDE-mac homebrew-kde
+    - brew tap KDE-mac/homebrew-kde
     - brew install cyrus-sasl
 
   - os: osx
