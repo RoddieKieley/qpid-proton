@@ -47,7 +47,7 @@ matrix:
     - chmod +x ./macports-ci
     - ./macports-ci install
     - PATH="/opt/local/bin:$PATH"
-    - port install cyrus-sasl2
+    - sudo port install cyrus-sasl2
 
 
   - os: osx
@@ -65,7 +65,7 @@ matrix:
     - chmod +x ./macports-ci
     - ./macports-ci install
     - PATH="/opt/local/bin:$PATH"
-    - port install cyrus-sasl2
+    - sudo port install cyrus-sasl2
 
 # Note addons is apt specific at the moment and will not be applied for osx.
 # See before_install brew commands below
