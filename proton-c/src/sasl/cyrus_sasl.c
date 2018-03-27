@@ -219,8 +219,8 @@ static void pni_cyrus_client_once(void) {
     }
   }
   if (result==SASL_OK) {
-    /*result = sasl_client_init(NULL);*/
-      result = sasl_client_init(pni_user_password_callbacks);
+    result = sasl_client_init(NULL);
+      /*result = sasl_client_init(pni_user_password_callbacks);*/
   }
   pni_cyrus_client_started = true;
   pni_cyrus_client_init_rc = result;
@@ -263,6 +263,7 @@ void cyrus_sasl_prepare(pn_transport_t* transport)
 bool cyrus_sasl_init_client(pn_transport_t* transport) {
   int result;
   sasl_conn_t *cyrus_conn = NULL;
+  const char* pszDefUserRealm = "proton";
   do {
     pni_cyrus_client_start();
     result = pni_cyrus_client_init_rc;
@@ -296,6 +297,7 @@ bool cyrus_sasl_init_client(pn_transport_t* transport) {
     const char *extid = pnx_sasl_get_external_username(transport);
     if (extid) {
       result = sasl_setprop(cyrus_conn, SASL_AUTH_EXTERNAL, extid);
+      if (result!=SASL_OK) break;
     }
   } while (false);
   cyrus_conn = (sasl_conn_t*) pnx_sasl_get_context(transport);
@@ -310,10 +312,7 @@ static int pni_wrap_client_start(pn_transport_t *transport, const char *mechs, c
     unsigned outlen;
 
     sasl_conn_t *cyrus_conn = (sasl_conn_t*)pnx_sasl_get_context(transport);
-    //int count = 0;
-    //const char *pszresult = NULL;
     do {
-  		//result = sasl_listmech(cyrus_conn, NULL, "", " ", "", &pszresult, NULL, &count);
         result = sasl_client_start(cyrus_conn,
                                    mechs,
                                    &client_interact,
@@ -405,7 +404,10 @@ bool cyrus_sasl_init_server(pn_transport_t* transport)
     result = pni_cyrus_server_init_rc;
     if (result!=SASL_OK) break;
 
-    result = sasl_server_new(amqp_service, NULL, NULL, NULL, NULL, NULL, 0, &cyrus_conn);
+    /*const sasl_callback_t *callbacks =
+      pnx_sasl_get_username(transport) ? pnx_sasl_get_password(transport) ? pni_user_password_callbacks : pni_user_callbacks : NULL;*/
+    /*sasl_server_new(amqp_service, NULL, NULL, NULL, NULL, callbacks, 0, &cyrus_conn);*/
+    sasl_server_new(amqp_service, NULL, NULL, NULL, NULL, NULL, 0, &cyrus_conn);
     if (result!=SASL_OK) break;
     pnx_sasl_set_context(transport, cyrus_conn);
 
