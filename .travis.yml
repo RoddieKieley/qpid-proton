@@ -37,26 +37,35 @@ matrix:
     env:
     - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
-    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/usr/local/opt/cyrus-sasl/include -DCYRUS_SASL_LIBRARY=/usr/local/opt/cyrus-sasl/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
+    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/opt/local/include/sasl -DCYRUS_SASL_LIBRARY=/opt/local/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
     before_install:
     - brew update
     - brew upgrade cmake python openssl
     - brew install libuv swig
-    - brew tap KDE-mac/homebrew-kde
-    - brew install cyrus-sasl
+    - export COLUMNS=80
+    - curl -LO https://raw.githubusercontent.com/GiovanniBussi/macports-ci/master/macports-ci
+    - chmod +x ./macports-ci
+    - ./macports-ci install
+    - PATH="/opt/local/bin:$PATH"
+    - port install cyrus-sasl2
+
 
   - os: osx
     osx_image: xcode9
     env:
     - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
-    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/usr/local/opt/cyrus-sasl/include -DCYRUS_SASL_LIBRARY=/usr/local/opt/cyrus-sasl/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
+    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/opt/local/include/sasl -DCYRUS_SASL_LIBRARY=/opt/local/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
     before_install:
     - brew update
     - brew upgrade cmake python openssl
     - brew install libuv swig
-    - brew tap KDE-mac/homebrew-kde
-    - brew install cyrus-sasl
+    - export COLUMNS=80
+    - curl -LO https://raw.githubusercontent.com/GiovanniBussi/macports-ci/master/macports-ci
+    - chmod +x ./macports-ci
+    - ./macports-ci install
+    - PATH="/opt/local/bin:$PATH"
+    - port install cyrus-sasl2
 
 # Note addons is apt specific at the moment and will not be applied for osx.
 # See before_install brew commands below
