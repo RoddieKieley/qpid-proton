@@ -37,7 +37,7 @@ matrix:
     env:
     - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
-    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/opt/local/include/sasl -DCYRUS_SASL_LIBRARY=/opt/local/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
+    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/usr/local/opt/include/sasl -DCYRUS_SASL_LIBRARY=/usr/local/opt/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
     before_install:
     - brew update
     - brew upgrade cmake python openssl
@@ -47,7 +47,8 @@ matrix:
     - chmod +x ./macports-ci
     - ./macports-ci install
     - PATH="/opt/local/bin:$PATH"
-    - sudo port install cyrus-sasl2
+    - sudo port -v install cyrus-sasl2
+    - which saslpasswd2
 
 
   - os: osx
@@ -55,7 +56,7 @@ matrix:
     env:
     - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
-    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/opt/local/include/sasl -DCYRUS_SASL_LIBRARY=/opt/local/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
+    - QPID_PROTON_CMAKE_ARGS='-DPROACTOR=libuv -DSASL_IMPL=cyrus -DCYRUS_SASL_INCLUDE_DIR=/usr/local/opt/include/sasl -DCYRUS_SASL_LIBRARY=/usr/local/opt/lib/libsasl2.dylib -DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=OFF -DBUILD_PYTHON=ON'
     before_install:
     - brew update
     - brew upgrade cmake python openssl
@@ -64,8 +65,9 @@ matrix:
     - curl -LO https://raw.githubusercontent.com/GiovanniBussi/macports-ci/master/macports-ci
     - chmod +x ./macports-ci
     - ./macports-ci install
-    - PATH="/opt/local/bin:$PATH"
-    - sudo port install cyrus-sasl2
+    - PATH="/opt/local/bin:/usr/local/opt/bin:$PATH"
+    - sudo port -v install cyrus-sasl2
+    - which saslpasswd2
 
 # Note addons is apt specific at the moment and will not be applied for osx.
 # See before_install brew commands below
