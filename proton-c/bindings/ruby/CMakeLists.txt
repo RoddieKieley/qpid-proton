@@ -105,8 +105,8 @@ install(DIRECTORY lib/ DESTINATION ${RUBY_ARCHLIB_DIR} COMPONENT Ruby)
 
 ## Tests
 
-to_native_path("$ENV{RUBYLIB};${src}/lib;${src}/tests;${src}/spec;${bin};${c_lib_dir}" RUBYLIB)
-to_native_path("$ENV{PATH};${bin};${c_lib_dir}" PATH)
+to_native_path("${src}/lib;${src}/tests;${src}/spec;${bin};${c_lib_dir};$ENV{RUBYLIB}" RUBYLIB)
+to_native_path("${bin};${c_lib_dir};$ENV{PATH}" PATH)
 
 execute_process(COMMAND ${RUBY_EXECUTABLE} -r minitest -e ""
   RESULT_VARIABLE result OUTPUT_QUIET ERROR_QUIET)
@@ -114,14 +114,11 @@ if (result EQUAL 0)  # Have minitest
   set(test_env ${env_py} -- "PATH=${PATH}" "RUBYLIB=${RUBYLIB}" "SASLPASSWD=${SASLPASSWD_EXE}")
 
   macro(add_ruby_test script)
-    if(${script} MATCHES "old")
-      set(opt "RUBYOPT=-W0")    # Suppress deprecation warnings
-    endif()
     get_filename_component(name ${script} NAME_WE)
     string(REPLACE "_" "-" name "ruby-${name}")
     add_test(
       NAME ${name}
-      COMMAND ${test_env} ${opt} ${RUBY_EXECUTABLE} ${script} -v
+      COMMAND ${test_env} ${RUBY_EXECUTABLE} ${script} -v
       ${ARGN})
 
   endmacro()
@@ -132,6 +129,10 @@ if (result EQUAL 0)  # Have minitest
   foreach(t ${TESTS} ${SPECS})
     add_ruby_test(${t})
   endforeach()
+  # Suppress deprecation warnings from backward-compatibility tests
+  set_tests_properties(
+    ruby-old-example-test ruby-test-old-adapter
+    PROPERTIES ENVIRONMENT "RUBYOPT=-W0")
 else()
   # No minitest
   message(STATUS "Ruby tests will not run, minitest is not installed")
@@ -144,7 +145,7 @@ if (YARD_EXE)
   add_custom_command(
     OUTPUT ${bin}/doc
     WORKING_DIRECTORY ${src}
-    COMMAND ${YARD_EXE} -o ${bin}/doc -b ${bin}/.yardoc --yardopts ${src}/yard/options -p ${src}/yard/templates
+    COMMAND ${YARD_EXE} -o ${bin}/doc -b ${bin}/.yardoc --yardopts ${src}/.yardopts -p ${src}/yard/templates
     DEPENDS ${RUBY_SRC}
     )
   add_custom_target(docs-ruby DEPENDS ${bin}/doc)

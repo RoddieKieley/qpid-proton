@@ -37,14 +37,3 @@ class Hash # :nodoc:
   end
 end
 
-module Qpid::Proton::Types
-  # @private
-  def self.symbol_keys(h)
-    h && h.reduce({}) { |x, (k, v)| x[k.to_sym] = v; x }
-  end
-
-  # @private
-  def self.symbol_array(a)
-    a && UniformArray.new(SYMBOL, a.collect { |v| v.to_sym })
-  end
-end

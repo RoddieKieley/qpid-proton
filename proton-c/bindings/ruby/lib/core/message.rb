@@ -73,15 +73,8 @@ module Qpid::Proton
     # @private
     def pre_encode
       # encode elements from the message
-      Codec::Data.from_object(Cproton::pn_message_properties(@impl),
-                              !@properties.empty? && Types.symbol_keys!(@properties))
-      Codec::Data.from_object(Cproton::pn_message_instructions(@impl),
-                              !@instructions.empty? && Types.symbol_keys!(@instructions))
-      if @annotations           # Make sure keys are symbols
-        @annotations.keys.each do |k|
-          @annotations[k.to_sym] = @annotations.delete(k) unless k.is_a? Symbol
-        end
-      end
+      Codec::Data.from_object(Cproton::pn_message_properties(@impl), !@properties.empty? && @properties)
+      Codec::Data.from_object(Cproton::pn_message_instructions(@impl), !@instructions.empty? && @instructions)
       Codec::Data.from_object(Cproton::pn_message_annotations(@impl), !@annotations.empty? && @annotations)
       Codec::Data.from_object(Cproton::pn_message_body(@impl), @body)
     end
@@ -95,6 +88,7 @@ module Qpid::Proton
       @properties = {}
       @instructions = {}
       @annotations = {}
+      @body = nil
       self.body = body unless body.nil?
       if !opts.nil? then
         opts.each do |k, v|
@@ -509,6 +503,8 @@ module Qpid::Proton
 
     # @return [Object] body of the message.
     attr_accessor :body
+
+    def inspect() pre_encode; super; end
 
     private
 

@@ -32,20 +32,21 @@ class ContainerTest < MiniTest::Test
     send_handler = Class.new(ExceptionMessagingHandler) do
       attr_reader :accepted, :sent
 
-      def initialize() @ready = Queue.new; end
+      def initialize() @sent, @accepted = nil; end
 
       def on_sendable(sender)
-        sender.send Message.new("foo") unless @sent
+        unless @sent
+          m = Message.new("hello")
+          m[:foo] = :bar
+          sender.send m
+        end
         @sent = true
       end
 
       def on_tracker_accept(tracker)
         @accepted = true
         tracker.connection.close
-        @ready << nil
       end
-
-      def wait() @ready.pop(); end
     end.new
 
     receive_handler = Class.new(ExceptionMessagingHandler) do
@@ -65,12 +66,12 @@ class ContainerTest < MiniTest::Test
 
     c = ServerContainer.new(__method__, {:handler => receive_handler})
     c.connect(c.url, {:handler => send_handler}).open_sender({:name => "testlink"})
-    send_handler.wait
-    c.wait
+    c.run
 
     assert send_handler.accepted
     assert_equal "testlink", receive_handler.link.name
-    assert_equal "foo", receive_handler.message.body
+    assert_equal "hello", receive_handler.message.body
+    assert_equal :bar, receive_handler.message[:foo]
     assert_equal "test_simple", receive_handler.link.connection.container_id
   end
 
@@ -153,16 +154,15 @@ class ContainerTest < MiniTest::Test
   def test_bad_host
     cont = Container.new(__method__)
     assert_raises (SocketError) { cont.listen("badlisten.example.com:999") }
-    assert_raises (SocketError) { c = cont.connect("badconnect.example.com:999") }
+    assert_raises (SocketError) { cont.connect("badconnect.example.com:999") }
   end
 
   # Verify that connection options are sent to the peer
   def test_connection_options
     # Note: user, password and sasl_xxx options are tested by ContainerSASLTest below
     server_handler = Class.new(ExceptionMessagingHandler) do
-      def initialize() @connection = Queue.new; end
       def on_connection_open(c)
-        @connection << c
+        @connection = c
         c.open({
           :virtual_host => "server.to.client",
           :properties => { :server => :client },
@@ -183,20 +183,19 @@ class ContainerTest < MiniTest::Test
     })
     client = cont.connect(cont.url,
       {:virtual_host => "client.to.server",
-        :properties => { :foo => :bar, "str" => "str" },
+        :properties => { "foo" => :bar, "str" => "str" },
         :offered_capabilities => [:c1 ],
-        :desired_capabilities => ["c2" ],
+        :desired_capabilities => [:c2 ],
         :idle_timeout => 42,
         :max_sessions =>100,
         :max_frame_size => 4096,
         :container_id => "bowl"
       })
-    server = server_handler.connection.pop
-    cont.wait
+    cont.run
 
-    c = server
+    c = server_handler.connection
     assert_equal "client.to.server", c.virtual_host
-    assert_equal({ :foo => :bar, :str => "str" }, c.properties)
+    assert_equal({ "foo" => :bar, "str" => "str" }, c.properties)
     assert_equal([:c1], c.offered_capabilities)
     assert_equal([:c2], c.desired_capabilities)
     assert_equal 21, c.idle_timeout # Proton divides by 2
@@ -215,6 +214,68 @@ class ContainerTest < MiniTest::Test
     assert_equal 100, c.max_sessions
   end
 
+  def test_link_options
+    server_handler = Class.new(ExceptionMessagingHandler) do
+      def initialize() @links = []; end
+      attr_reader :links
+      def on_sender_open(l) @links << l; end
+      def on_receiver_open(l) @links << l; end
+    end.new
+
+    client_handler = Class.new(ExceptionMessagingHandler) do
+      def on_connection_open(c)
+        @links = [];
+        @links << c.open_sender("s1")
+        @links << c.open_sender({:name => "s2-n", :target => "s2-t", :source => "s2-s"})
+        @links << c.open_receiver("r1")
+        @links << c.open_receiver({:name => "r2-n", :target => "r2-t", :source => "r2-s"})
+        c.close
+      end
+      attr_reader :links
+    end.new
+
+    cont = ServerContainer.new(__method__, {:handler => server_handler }, 1)
+    cont.connect(cont.url, :handler => client_handler)
+    cont.run
+
+    expect = ["test_link_options/1", "s2-n", "test_link_options/2", "r2-n"]
+    assert_equal expect, server_handler.links.map(&:name)
+    assert_equal expect, client_handler.links.map(&:name)
+
+    expect = [[nil,"s1"], ["s2-s","s2-t"], ["r1",nil], ["r2-s","r2-t"]]
+    assert_equal expect, server_handler.links.map { |l| [l.remote_source.address, l.remote_target.address] }
+    assert_equal expect, client_handler.links.map { |l| [l.source.address, l.target.address] }
+  end
+
+  def extract_terminus_options(t)
+    opts = Hash[[:address, :distribution_mode, :durability_mode, :timeout, :expiry_policy].map { |m| [m, t.send(m)] }]
+    opts[:filter] = t.filter.map
+    opts[:capabilities] = t.capabilities.map
+    opts[:dynamic] = t.dynamic?
+    opts
+  end
+
+  def test_terminus_options
+    opts = {
+      :distribution_mode => Terminus::DIST_MODE_COPY,
+      :durability_mode => Terminus::DELIVERIES,
+      :timeout => 5,
+      :expiry_policy => Terminus::EXPIRE_WITH_LINK,
+      :filter => { :try => 'me' },
+      :capabilities => { :cap => 'len' },
+    }
+    src_opts = { :address => "src", :dynamic => true }.update(opts)
+    tgt_opts = { :address => "tgt", :dynamic => false }.update(opts)
+
+    cont = ServerContainer.new(__method__, {}, 1)
+    c = cont.connect(cont.url)
+    s = c.open_sender({:target => tgt_opts, :source => src_opts })
+    assert_equal src_opts, extract_terminus_options(s.source)
+    assert_equal tgt_opts, extract_terminus_options(s.target)
+    assert s.source.dynamic?
+    assert !s.target.dynamic?
+  end
+
   # Test for time out on connecting to an unresponsive server
   def test_idle_timeout_server_no_open
     s = TCPServer.new(0)
@@ -228,7 +289,7 @@ class ContainerTest < MiniTest::Test
 
   # Test for time out on unresponsive client
   def test_idle_timeout_client
-    server = ServerContainer.new("#{__method__}.server", {:idle_timeout => 0.1})
+    server = ServerContainerThread.new("#{__method__}.server", {:idle_timeout => 0.1})
     client_handler = Class.new(ExceptionMessagingHandler) do
       def initialize() @ready, @block = Queue.new, Queue.new; end
       attr_reader :ready, :block
@@ -237,11 +298,12 @@ class ContainerTest < MiniTest::Test
         @block.pop             # Block the client so the server will time it out
       end
     end.new
+
     client = Container.new(nil, "#{__method__}.client")
     client.connect(server.url, {:handler => client_handler})
     client_thread = Thread.new { client.run }
     client_handler.ready.pop    # Wait till the client has connected
-    server.wait                 # Exits when the connection closes from idle-timeout
+    server.join                 # Exits when the connection closes from idle-timeout
     client_handler.block.push nil   # Unblock the client
     ex = assert_raises(Qpid::Proton::Condition) { client_thread.join }
     assert_match(/resource-limit-exceeded/, ex.to_s)
@@ -250,7 +312,7 @@ class ContainerTest < MiniTest::Test
   # Make sure we stop and clean up if an aborted connection causes a handler to raise.
   # https://issues.apache.org/jira/browse/PROTON-1791
   def test_handler_raise
-    cont = ServerContainer.new(__method__)
+    cont = ServerContainer.new(__method__, {}, 0) # Don't auto-close the listener
     client_handler = Class.new(MessagingHandler) do
       # TestException is < Exception so not handled by default rescue clause
       def on_connection_open(c) raise TestException.new("Bad Dog"); end
@@ -267,5 +329,127 @@ class ContainerTest < MiniTest::Test
     assert_raises(Container::StoppedError) { cont.run }
     assert_raises(Container::StoppedError) { cont.listen "" }
   end
-end
 
+  # Test container doesn't stops only when schedule work is done
+  def test_container_work_queue
+    c = Container.new __method__
+    delays = [0.1, 0.03, 0.02]
+    a = []
+    delays.each { |d| c.schedule(d) { a << [d, Time.now] } }
+    start = Time.now
+    c.run
+    delays.sort.each do |d|
+      x = a.shift
+      assert_equal d, x[0]
+      assert_in_delta  start + d, x[1], 0.01
+    end
+  end
+
+  # Test container work queue finishes due tasks on external stop, drops future tasks
+  def test_container_work_queue_stop
+    q = Queue.new
+    c = Container.new __method__
+    t = Thread.new { c.run }
+    [0.1, 0.2, 0.2, 0.2, 1.0].each { |d| c.schedule(d) { q << d } }
+    assert_equal 0.1, q.pop
+    assert_equal 0.2, q.pop
+    c.stop
+    t.join
+    assert_equal 0.2, q.pop
+    assert_equal 0.2, q.pop
+    assert_empty q
+  end
+
+  # Chain schedule calls from other schedule calls
+  def test_container_schedule_chain
+    c = Container.new(__method__)
+    delays = [0.05, 0.02, 0.04]
+    i = delays.each
+    a = []
+    p = Proc.new { c.schedule(i.next) { a << Time.now; p.call } rescue nil }
+    p.call                 # Schedule the first, which schedules the second etc.
+    start = Time.now
+    c.run
+    assert_equal 3, a.size
+    delays.inject(0) do |d,sum|
+      x = a.shift
+      assert_in_delta  start + d + sum, x, 0.01
+      sum + d
+    end
+  end
+
+  # Schedule calls from handlers
+  def test_container_schedule_handler
+    h = Class.new() do
+      def initialize() @got = []; end
+      attr_reader :got
+      def record(m) @got << m; end
+      def on_container_start(c) c.schedule(0) {record __method__}; end
+      def on_connection_open(c) c.close; c.container.schedule(0) {record __method__}; end
+      def on_connection_close(c) c.container.schedule(0) {record __method__}; end
+    end.new
+    t = ServerContainerThread.new(__method__, nil, 1, h)
+    t.connect(t.url)
+    t.join
+    assert_equal [:on_container_start, :on_connection_open, :on_connection_open, :on_connection_close, :on_connection_close], h.got
+  end
+
+  # Raising from container handler should stop container
+  def test_container_handler_raise
+    h = Class.new() do
+      def on_container_start(c) raise "BROKEN"; end
+    end.new
+    c = Container.new(h, __method__)
+    assert_equal("BROKEN", (assert_raises(RuntimeError) { c.run }).to_s)
+  end
+
+  # Raising from connection handler should stop container
+  def test_connection_handler_raise
+    h = Class.new() do
+      def on_connection_open(c) raise "BROKEN"; end
+    end.new
+    c = ServerContainer.new(__method__, nil, 1, h)
+    c.connect(c.url)
+    assert_equal("BROKEN", (assert_raises(RuntimeError) { c.run }).to_s)
+  end
+
+  # Raising from container schedule should stop container
+  def test_container_schedule_raise
+    c = Container.new(__method__)
+    c.schedule(0) { raise "BROKEN" }
+    assert_equal("BROKEN", (assert_raises(RuntimeError) { c.run }).to_s)
+  end
+
+  def test_connection_work_queue
+    cont = ServerContainer.new(__method__, {}, 1)
+    c = cont.connect(cont.url)
+    t = Thread.new { cont.run }
+    q = Queue.new
+
+    start = Time.now
+    c.work_queue.schedule(0.02) { q << [3, Thread.current] }
+    c.work_queue.add { q << [1, Thread.current] }
+    c.work_queue.schedule(0.04) { q << [4, Thread.current] }
+    c.work_queue.add { q << [2, Thread.current] }
+
+    assert_equal [1, t], q.pop
+    assert_equal [2, t], q.pop
+    assert_in_delta  0.0, Time.now - start, 0.01
+    assert_equal [3, t], q.pop
+    assert_in_delta  0.02, Time.now - start, 0.01
+    assert_equal [4, t], q.pop
+    assert_in_delta  0.04, Time.now - start, 0.01
+
+    c.work_queue.add { c.close }
+    t.join
+    assert_raises(WorkQueue::StoppedError) { c.work_queue.add {  } }
+  end
+
+  # Raising from connection schedule should stop container
+  def test_connection_work_queue_raise
+    c = ServerContainer.new(__method__)
+    c.connect(c.url)
+    c.work_queue.add { raise "BROKEN" }
+    assert_equal("BROKEN", (assert_raises(RuntimeError) { c.run }).to_s)
+  end
+end

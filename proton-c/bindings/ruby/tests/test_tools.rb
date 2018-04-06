@@ -96,15 +96,15 @@ class TestHandler < Qpid::Proton::MessagingHandler
   end
 end
 
-# ListenHandler that closes the Listener after first accept
+# ListenHandler that closes the Listener after first (or n) accepts
 class ListenOnceHandler < Qpid::Proton::Listener::Handler
+  def initialize(opts, n=1) super(opts); @n=n; end
   def on_error(l, e) raise e; end
-  def on_accept(l) l.close; super; end
+  def on_accept(l) l.close if (@n -= 1).zero?; super; end
 end
 
 # Add port/url to Listener, assuming a TCP socket
 class Qpid::Proton::Listener
-  def port() to_io.addr[1]; end
   def url() "amqp://:#{port}"; end
 end
 
@@ -146,23 +146,27 @@ DriverPair = Struct.new(:client, :server) do
   end
 end
 
-# Container that listens on a random port and runs itself
+# Container that listens on a random port
 class ServerContainer < Qpid::Proton::Container
   include Qpid::Proton
 
-  def initialize(id=nil, listener_opts=nil)
-    super id
-    @listener = listen_io(TCPServer.open(0), Listener::Handler.new(listener_opts))
-    @thread = Thread.new { run }
+  def initialize(id=nil, listener_opts=nil, n=1, handler=nil)
+    super handler, id
+    @listener = listen_io(TCPServer.open(0), ListenOnceHandler.new(listener_opts, n))
   end
 
   attr_reader :listener
 
   def port() @listener.port; end
   def url() "amqp://:#{port}"; end
-
-  # NOTE: the test must have already waited for some events to happen before
-  # calling this, otherwise the listener can close before it opens and nothing happens
-  def wait() @listener.close; @thread.join; end
 end
 
+class ServerContainerThread < ServerContainer
+  def initialize(*args)
+    super
+    @thread = Thread.new { run }
+  end
+
+  attr_reader :thread
+  def join() @thread.join; end
+end

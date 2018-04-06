@@ -34,10 +34,10 @@
 #include "./decimal.hpp"
 #include "./duration.hpp"
 #include "./message_id.hpp"
+#include "./null.hpp"
 #include "./scalar.hpp"
 #include "./symbol.hpp"
 #include "./timestamp.hpp"
-#include "./types_fwd.hpp"
 #include "./uuid.hpp"
 #include "./value.hpp"
 

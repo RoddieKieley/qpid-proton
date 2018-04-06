@@ -119,6 +119,7 @@ set(qpid-proton-cpp-source
   src/message.cpp
   src/messaging_adapter.cpp
   src/node_options.cpp
+  src/null.cpp
   src/object.cpp
   src/proton_bits.cpp
   src/receiver.cpp
@@ -240,3 +241,4 @@ add_cpp_test(value_test)
 add_cpp_test(container_test)
 add_cpp_test(url_test)
 add_cpp_test(reconnect_test)
+add_cpp_test(link_test)
