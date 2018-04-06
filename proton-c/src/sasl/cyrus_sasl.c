@@ -263,7 +263,7 @@ void cyrus_sasl_prepare(pn_transport_t* transport)
 bool cyrus_sasl_init_client(pn_transport_t* transport) {
   int result;
   sasl_conn_t *cyrus_conn = NULL;
-  const char* pszDefUserRealm = "proton";
+  //const char* pszDefUserRealm = "proton";
   do {
     pni_cyrus_client_start();
     result = pni_cyrus_client_init_rc;
