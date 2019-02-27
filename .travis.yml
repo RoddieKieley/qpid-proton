@@ -33,11 +33,11 @@ matrix:
     - bash <(curl -s https://codecov.io/bash)
 
   - os: osx
-    osx_image: xcode7.3
+    osx_image: xcode8.3
     env:
     - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
-    - QPID_PROTON_CMAKE_ARGS='-DCMAKE_OSX_DEPLOYMENT_TARGET=10.11 -DBUILD_RUBY=NO'
+    - QPID_PROTON_CMAKE_ARGS='-DCMAKE_OSX_DEPLOYMENT_TARGET=10.12 -DBUILD_RUBY=NO'
     before_install:
     - brew update
     - brew upgrade cmake openssl
