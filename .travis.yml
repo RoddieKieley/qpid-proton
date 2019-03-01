@@ -43,7 +43,7 @@ matrix:
     - brew install libuv swig
 
   - os: osx
-    osx_image: xcode9
+    osx_image: xcode10.1
     env:
     - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
