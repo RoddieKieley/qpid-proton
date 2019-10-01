@@ -1,3 +1,3 @@
-module qpid-proton
+module github.com/roddiekieley/qpid-proton
 
 go 1.13
