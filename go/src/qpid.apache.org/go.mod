@@ -1,3 +1,3 @@
-module github.com/roddiekieley/qpid-proton/go/src/qpid.apache.org
+module github.com/roddiekieley/qpid-proton
 
 go 1.13
