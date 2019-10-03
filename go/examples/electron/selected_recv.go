@@ -26,8 +26,8 @@ import (
 	"os"
 	"strings"
 
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/electron"
+	"../../pkg/amqp"
+	"../../pkg/electron"
 )
 
 // NOTE: this example requires a broker thta supports the APACHE.ORG:SELECTOR filter.

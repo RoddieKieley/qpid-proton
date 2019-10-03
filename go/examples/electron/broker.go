@@ -32,8 +32,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/electron"
+	"../../pkg/amqp"
+	"../../pkg/electron"
 	"sync"
 )
 

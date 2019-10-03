@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/electron"
+	"../amqp"
+	"../electron"
 	"sync"
 )
 

@@ -27,8 +27,8 @@ import (
 	"strings"
 	"sync"
 
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/electron"
+	"../../pkg/amqp"
+	"../../pkg/electron"
 )
 
 // Usage and command-line flags

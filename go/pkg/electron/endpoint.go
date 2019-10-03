@@ -22,7 +22,7 @@ package electron
 import (
 	"fmt"
 	"io"
-	"qpid.apache.org/proton"
+	"../proton"
 )
 
 // Closed is an alias for io.EOF. It is returned as an error when an endpoint

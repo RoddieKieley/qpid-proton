@@ -25,7 +25,7 @@ import (
 	"sync"
 	"testing"
 
-	"qpid.apache.org/amqp"
+	"../amqp"
 	"qpid.apache.org/internal/test"
 )
 

@@ -40,7 +40,7 @@ import (
 	"time"
 	"unsafe"
 
-	"qpid.apache.org/amqp"
+	"../amqp"
 )
 
 // TODO aconway 2015-05-05: Documentation for generated types.

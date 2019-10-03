@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"qpid.apache.org/amqp"
+	"../amqp"
 	"qpid.apache.org/internal/test"
 )
 

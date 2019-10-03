@@ -20,7 +20,7 @@ under the License.
 package electron
 
 import (
-	"qpid.apache.org/proton"
+	"../proton"
 )
 
 // Session is an AMQP session, it contains Senders and Receivers.

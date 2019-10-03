@@ -23,8 +23,8 @@ import (
 	"fmt"
 	"time"
 
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/proton"
+	"../amqp"
+	"../proton"
 )
 
 // Receiver is a Link that receives messages.

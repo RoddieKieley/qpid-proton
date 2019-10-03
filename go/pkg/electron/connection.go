@@ -30,8 +30,8 @@ import (
 	"sync"
 	"time"
 
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/proton"
+	"../amqp"
+	"../proton"
 )
 
 // Settings associated with a Connection.

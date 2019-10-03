@@ -21,8 +21,8 @@ package electron
 
 import (
 	"fmt"
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/proton"
+	"../amqp"
+	"../proton"
 	"time"
 )
 

@@ -35,8 +35,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/proton"
+	"../../pkg/amqp"
+	"../../pkg/proton"
 	"sync"
 )
 

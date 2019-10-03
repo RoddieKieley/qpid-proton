@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"qpid.apache.org/amqp"
-	"qpid.apache.org/electron"
+	"../../pkg/amqp"
+	"../../pkg/electron"
 	"strings"
 	"sync"
 )
