@@ -31,7 +31,7 @@ import (
 	"strings"
 	"testing"
 
-	"qpid.apache.org/internal/test"
+	"../internal/test"
 )
 
 var skipped = false

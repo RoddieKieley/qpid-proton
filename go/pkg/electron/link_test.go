@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"../amqp"
-	"qpid.apache.org/internal/test"
+	"../internal/test"
 	"../proton"
 )
 

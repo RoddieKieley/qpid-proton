@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"qpid.apache.org/internal/test"
+	"../internal/test"
 )
 
 func TestSymbolKey(t *testing.T) {

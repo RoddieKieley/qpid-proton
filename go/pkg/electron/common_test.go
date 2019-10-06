@@ -24,7 +24,7 @@ import (
 	"sync"
 	"testing"
 
-	"qpid.apache.org/internal/test"
+	"../internal/test"
 )
 
 // AMQP client/server pair

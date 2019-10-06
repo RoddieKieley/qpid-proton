@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"../amqp"
-	"qpid.apache.org/internal/test"
+	"../internal/test"
 )
 
 // Send a message one way with a client sender and server receiver, verify ack.

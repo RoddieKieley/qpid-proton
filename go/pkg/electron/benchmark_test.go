@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"../amqp"
-	"qpid.apache.org/internal/test"
+	"../internal/test"
 )
 
 // To change capacity use

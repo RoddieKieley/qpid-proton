@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"qpid.apache.org/internal/test"
+	"../internal/test"
 )
 
 func roundTrip(m Message) error {
