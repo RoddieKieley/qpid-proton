@@ -35,8 +35,8 @@ import (
 	"log"
 	"net"
 	"os"
-	"../../pkg/amqp"
-	"../../pkg/proton"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/proton"
 	"sync"
 )
 

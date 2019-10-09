@@ -27,8 +27,8 @@ import (
 	"strings"
 	"sync"
 
-	"../../pkg/amqp"
-	"../../pkg/electron"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/electron"
 )
 
 // Usage and command-line flags

@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"../internal/test"
+	"github.com/roddiekieley/qpid-proton/go/pkg/internal/test"
 )
 
 func roundTrip(m Message) error {

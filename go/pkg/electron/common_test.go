@@ -24,7 +24,7 @@ import (
 	"sync"
 	"testing"
 
-	"../internal/test"
+	"github.com/roddiekieley/qpid-proton/go/pkg/internal/test"
 )
 
 // AMQP client/server pair

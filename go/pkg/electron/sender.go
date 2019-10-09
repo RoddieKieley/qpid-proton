@@ -26,8 +26,8 @@ import (
 	"fmt"
 	"time"
 
-	"../amqp"
-	"../proton"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/proton"
 )
 
 // Sender is a Link that sends messages.

@@ -24,8 +24,8 @@ import (
 	"testing"
 	"time"
 
-	"../amqp"
-	"../internal/test"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/internal/test"
 )
 
 // Send a message one way with a client sender and server receiver, verify ack.

@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"../../pkg/amqp"
-	"../../pkg/electron"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/electron"
 	"strings"
 	"sync"
 )

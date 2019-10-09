@@ -21,8 +21,8 @@ package electron
 
 import (
 	"fmt"
-	"../amqp"
-	"../proton"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/proton"
 	"time"
 )
 

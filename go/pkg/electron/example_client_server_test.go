@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"../amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
 	"../electron"
 	"sync"
 )

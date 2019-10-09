@@ -25,7 +25,7 @@ import (
 	"testing"
 	"time"
 
-	"../internal/test"
+	"github.com/roddiekieley/qpid-proton/go/pkg/internal/test"
 )
 
 type events []EventType

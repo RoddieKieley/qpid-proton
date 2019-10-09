@@ -28,7 +28,7 @@ import (
 	"strings"
 	"testing"
 
-	"../internal/test"
+	"github.com/roddiekieley/qpid-proton/go/pkg/internal/test"
 )
 
 func TestAuthAnonymous(t *testing.T) {

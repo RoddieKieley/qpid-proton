@@ -30,8 +30,8 @@ import (
 	"sync"
 	"time"
 
-	"../amqp"
-	"../proton"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/proton"
 )
 
 // Settings associated with a Connection.

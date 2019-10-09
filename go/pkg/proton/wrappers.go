@@ -40,7 +40,7 @@ import (
 	"time"
 	"unsafe"
 
-	"../amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
 )
 
 // TODO aconway 2015-05-05: Documentation for generated types.

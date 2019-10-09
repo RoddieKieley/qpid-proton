@@ -29,7 +29,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"../amqp"
+	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
 )
 
 // HasMessage is true if all message data is available.
