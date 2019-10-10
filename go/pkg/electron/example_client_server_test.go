@@ -5,7 +5,7 @@ import (
 	"log"
 	"net"
 	"github.com/roddiekieley/qpid-proton/go/pkg/amqp"
-	"../electron"
+	"github.com/roddiekieley/qpid-proton/go/pkg/electron"
 	"sync"
 )
 
