@@ -34,7 +34,7 @@ matrix:
     - bash <(curl -s https://codecov.io/bash)
 
   - os: osx
-    osx_image: xcode9.4
+    osx_image: xcode8.3
     env:
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
     - PKG_CONFIG_PATH='/usr/local/opt/openssl@1.1/lib/pkgconfig'
@@ -43,7 +43,7 @@ matrix:
     - QPID_PROTON_CTEST_ARGS="--exclude-regex 'python-tox-test|ruby.*'"
 
   - os: osx
-    osx_image: xcode11.3
+    osx_image: xcode10.1
     env:
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
     - PKG_CONFIG_PATH='/usr/local/opt/openssl@1.1/lib/pkgconfig'
