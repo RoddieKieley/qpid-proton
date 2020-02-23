@@ -34,28 +34,25 @@ matrix:
     - bash <(curl -s https://codecov.io/bash)
 
   - os: osx
-    osx_image: xcode8.3
+    osx_image: xcode9.4
     env:
-    - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
-    - QPID_PROTON_CMAKE_ARGS='-DCMAKE_OSX_DEPLOYMENT_TARGET=10.12 -DBUILD_RUBY=NO -DBUILD_GO=OFF'
-    before_install:
-    - brew update
-    - brew install libuv swig jsoncpp
+    - PKG_CONFIG_PATH='/usr/local/opt/openssl@1.1/lib/pkgconfig'
+    - QPID_PROTON_CMAKE_ARGS='-DCMAKE_OSX_DEPLOYMENT_TARGET=10.13'
+    # python-tox-test segfaults and ruby tests do not start due to dynamic library issues
+    - QPID_PROTON_CTEST_ARGS="--exclude-regex 'python-tox-test|ruby.*'"
 
   - os: osx
-    osx_image: xcode10.1
+    osx_image: xcode11.3
     env:
-    - PKG_CONFIG_PATH='/usr/local/opt/openssl/lib/pkgconfig'
     - PATH="/usr/local/opt/python/libexec/bin:/usr/local/bin:$PATH"
-    - QPID_PROTON_CMAKE_ARGS='-DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 -DBUILD_RUBY=NO -DBUILD_PYTHON=OFF -DBUILD_GO=ON'
-    before_install:
-    - brew update
-    - brew install libuv swig jsoncpp
+    - PKG_CONFIG_PATH='/usr/local/opt/openssl@1.1/lib/pkgconfig'
+    - QPID_PROTON_CMAKE_ARGS='-DCMAKE_OSX_DEPLOYMENT_TARGET=10.14'
+    # python-tox-test segfaults and ruby tests do not start due to dynamic library issues
+    - QPID_PROTON_CTEST_ARGS="--exclude-regex 'python-tox-test|ruby.*'"
 
-# Note addons is apt specific at the moment and will not be applied for osx.
-# See before_install brew commands below
 addons:
+  # Ubuntu 16.04 APT dependencies, https://packages.ubuntu.com/
   apt:
     packages:
     - cmake
@@ -71,6 +68,12 @@ addons:
     - golang
     - lcov
     - libjsoncpp-dev
+  # macOS Homebrew dependencies, https://formulae.brew.sh/
+  homebrew:
+    packages:
+      - jsoncpp
+      - libuv
+      - swig
 
 install:
 - python -m pip install --user --upgrade pip
@@ -83,5 +86,4 @@ before_script:
 - cmake .. -DCMAKE_INSTALL_PREFIX=$PWD/install ${QPID_PROTON_CMAKE_ARGS}
 
 script:
-- cmake --build . --target install && ctest -V ${QPID_PROTON_CTEST_ARGS}
-
+- cmake --build . --target install -- -j$(nproc) && eval ctest -V ${QPID_PROTON_CTEST_ARGS}
