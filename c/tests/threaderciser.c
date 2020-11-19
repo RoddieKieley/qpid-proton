@@ -574,15 +574,22 @@ int main(int argc, const char* argv[]) {
   }
   millisleep(runtime*1000);
 
-  debug("shut down");
+  debug("calling shut down");
   global_set_shutdown(&g, true);
+  debug("shut down");
   void *ignore;
   for (i = 0; i < threads/2; ++i) pthread_join(user_threads[i], &ignore);
-  debug("disconnect");
+  debug("calling disconnect");
   pn_proactor_disconnect(g.proactor, NULL);
+  debug("disconnected");
   for (i = 0; i < threads/2; ++i) pthread_join(proactor_threads[i], &ignore);
-
+  debug("free user_threads");
   free(user_threads);
+  debug("freed user_threads");
+  debug("free proactor_threads");
   free(proactor_threads);
+  debug("freed proactor_threads");
+  debug("global destroy");
   global_destroy(&g);
+  debug("globally destroyed");
 }
