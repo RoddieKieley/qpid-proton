@@ -329,6 +329,7 @@ typedef struct {
 
   pthread_mutex_t lock;
   bool shutdown;
+  int open_listeners;
 } global;
 
 void global_init(global *g, int threads) {
@@ -362,6 +363,25 @@ void global_set_shutdown(global *g, bool set) {
   pthread_mutex_unlock(&g->lock);
 }
 
+int global_get_open_listeners(global *g) {
+    pthread_mutex_lock(&g->lock);
+    int ret = g->open_listeners;
+    pthread_mutex_unlock(&g->lock);
+    return ret;
+}
+
+void global_increment_open_listeners(global *g) {
+    pthread_mutex_lock(&g->lock);
+    g->open_listeners++;
+    pthread_mutex_unlock(&g->lock);
+}
+
+void global_decrement_open_listeners(global *g) {
+    pthread_mutex_lock(&g->lock);
+    g->open_listeners--;
+    pthread_mutex_unlock(&g->lock);
+}
+
 void global_connect(global *g) {
   char a[PN_MAX_ADDR];
   lpool_addr(&g->listeners, a, sizeof(a));
@@ -378,7 +398,7 @@ static bool maybe(double probability) {
 static void global_do_stuff(global *g) {
   if (maybe(0.5)) global_connect(g);
   if (maybe(0.3)) lpool_listen(&g->listeners, g->proactor);
-  if (maybe(0.1)) lpool_close(&g->listeners);
+  if (maybe(0.1) && (global_get_open_listeners(g) > 0)) lpool_close(&g->listeners);
   if (maybe(0.5)) cpool_wake(&g->connections_active);
   if (maybe(0.5)) cpool_wake(&g->connections_idle);
   if (action_enabled[A_TIMEOUT] && maybe(0.5)) {
@@ -417,17 +437,25 @@ static bool handle(global *g, pn_event_t *e) {
    }
 
    case PN_LISTENER_OPEN: {
+       global_increment_open_listeners(g);
      pthread_mutex_lock(&lctx->lock);
+
      if (lctx->pn_listener) {
        pn_netaddr_str(pn_listener_addr(lctx->pn_listener), lctx->addr, sizeof(lctx->addr));
      }
-     debug("[%p] listening on %s", lctx->pn_listener, lctx->addr);
+//     debug("[%p] listening on %s", lctx->pn_listener, lctx->addr);
+       //debug("[%p] PN_LISTEN_OPEN on %s", lctx->pn_listener, lctx->addr);
+       debug("[%p] PN_LISTEN_OPEN on %s, opened: %d", lctx->pn_listener, lctx->addr, g->open_listeners);
+
      pthread_mutex_unlock(&lctx->lock);
      cpool_connect(&g->connections_active, g->proactor, lctx->addr); /* Initial connection */
      break;
    }
    case PN_LISTENER_CLOSE: {
+       global_decrement_open_listeners(g);
      pthread_mutex_lock(&lctx->lock);
+
+     debug("[%p] PN_LISTEN_CLOSE on %s, opened: %d", lctx->pn_listener, lctx->addr, g->open_listeners);
      lctx->pn_listener = NULL;
      pthread_mutex_unlock(&lctx->lock);
      lpool_unref(lctx);
@@ -435,7 +463,7 @@ static bool handle(global *g, pn_event_t *e) {
    }
 
    case PN_CONNECTION_WAKE: {
-     if (!action_enabled[A_CLOSE_CONNECT] && maybe(0.5)) pn_connection_close(c);
+     if (!action_enabled[A_CLOSE_CONNECT] && maybe(0.5) && global_get_open_listeners(&g) > 0) pn_connection_close(c);
      /* TODO aconway 2018-05-16: connection release/re-use */
      break;
    }
