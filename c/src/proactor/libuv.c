@@ -432,8 +432,8 @@ static void on_close_pconnection(uv_handle_t *h) {
 static void listener_close_lh(pn_listener_t* l) {
   if (l->state < L_CLOSE) {
     l->state = L_CLOSE;
+    work_notify(&l->work);
   }
-  work_notify(&l->work);
 }
 
 static void on_close_lsocket(uv_handle_t *h) {
