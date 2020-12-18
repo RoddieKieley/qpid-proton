@@ -23,6 +23,8 @@ jobs:
       InstallPrefix: ${{github.workspace}}/INSTALL
       PKG_CONFIG_PATH: ${{matrix.pkg_config_path}}
       VCPKG_DEFAULT_TRIPLET: x64-windows
+      QPID_PROTON_CMAKE_ARGS='--DTHREADERCISER=ON'
+      QPID_PROTON_CTEST_ARTS='--exclude-regex c-threaderciser'
     steps:
     - uses: actions/checkout@v2
     - name: Create Build and Install directories
